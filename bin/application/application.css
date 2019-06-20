@@ -1,0 +1,79 @@
+#mainvbox {
+	-fx-background-image: url("../background.jpg");
+    -fx-background-repeat: stretch;
+    -fx-background-size: 900 600;
+    -fx-background-position: center center;
+   	-fx-alignment: center;
+}
+
+#titletext {
+    -fx-font: 100px Tahoma;
+    -fx-fill: linear-gradient(from 0% 0% to 100% 200%, repeat, aqua 0%, red 50%);
+    -fx-stroke: black;
+    -fx-stroke-width: 1;
+}
+
+.mainbutton {
+	-fx-padding: 20 100;
+	-fx-font-size: 40;
+	-fx-focus-color: transparent;
+	-fx-faint-focus-color: transparent;
+}
+
+.gridsquare {
+	-fx-background-image: url('../emptysquare.png');
+  	-fx-background-repeat: no-repeat;
+  	-fx-background-position: center;
+  	-fx-border-color: black;
+	-fx-focus-color: transparent;
+	-fx-faint-focus-color: transparent;
+}
+
+.blacksquare {
+	-fx-background-image: url('../blackpiece.png');
+  	-fx-background-repeat: no-repeat;
+  	-fx-background-position: center;
+}
+
+.bsrecentself {
+	-fx-background-image: url('../bprecentself.png');
+  	-fx-background-repeat: no-repeat;
+  	-fx-background-position: center;
+}
+
+.bsrecentoppo {
+	-fx-background-image: url('../bprecentoppo.png');
+  	-fx-background-repeat: no-repeat;
+  	-fx-background-position: center;
+}
+
+.whitesquare {
+	-fx-background-image: url('../whitepiece.png');
+  	-fx-background-repeat: no-repeat;
+  	-fx-background-position: center;
+}
+
+.wsrecentself {
+	-fx-background-image: url('../wprecentself.png');
+  	-fx-background-repeat: no-repeat;
+  	-fx-background-position: center;
+}
+
+.wsrecentoppo {
+	-fx-background-image: url('../wprecentoppo.png');
+  	-fx-background-repeat: no-repeat;
+  	-fx-background-position: center;
+}
+
+#playboard {
+	-fx-alignment: center;
+	
+}
+
+#playregionhead {
+	
+}
+
+#playregion {
+	
+}
