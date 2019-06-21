@@ -22,6 +22,7 @@ public class Main extends Application {
 
 	public GridPane playboard = null;
 	Player user = null;
+	Player opponent = null;
 	ReversiBoard rboard = null;
 	int pColor = 0; //player color
 	Computer comp = null;
@@ -209,6 +210,7 @@ public class Main extends Application {
 				user.setName(ans.get());
 		}
 
+		/*
 		//opponent's name
 		TextInputDialog dialog = new TextInputDialog();
 		dialog.setContentText("Enter opponent's name:");
@@ -249,6 +251,8 @@ public class Main extends Application {
 		alert.showAndWait();
 
 		out.flush();
+		
+		*/
 
 		return true;
 
@@ -256,6 +260,8 @@ public class Main extends Application {
 	
 	//creates the borderpane for the multiplayer game
 		public BorderPane createMultiplayerGameRegion() {
+			
+			tColor = -1;
 
 			//TODO: Determine whoever goes first, disable all buttons for the second guy, then maybe make an opponent class?
 			
@@ -265,6 +271,58 @@ public class Main extends Application {
 			//create top text
 			Text heading = new Text("REVERSI");
 			heading.setId("playregionhead");
+			
+			//create connect text
+			Text connectText = new Text();
+			
+			//create Connect button
+			Button connectButton = new Button("Find opponent");
+			EventHandler<ActionEvent> connectClicked = new EventHandler<ActionEvent>() {
+				public void handle(ActionEvent e) {
+					try {
+						connectText.setText("Looking for opponent...");
+						out.writeUTF("FINDOPPONENT");
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+					Thread thread = new Thread(new Runnable() {
+						public void run() {
+							try {
+								//everything here is deciding who goes first
+								String opponentname = in.readUTF();
+								opponent = new Player(opponentname, rboard);
+								Random rand = new Random();
+								
+								//whoever has the larger number goes first
+								double num = rand.nextDouble();
+								out.writeUTF(num + "");
+								double opponum = Double.parseDouble(in.readUTF());
+								if (num > opponum) {
+									pColor = -1;
+									oColor = 1;
+									connectText.setText("Opponent found! You are black.");
+								}
+								else {
+									pColor = 1;
+									oColor = -1;
+									connectText.setText("Opponent found! You are white.");
+								}
+								
+
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+					});
+					thread.start();
+				}
+			};
+			connectButton.setOnAction(connectClicked);
+			
+			//create right vbox
+			VBox connectVbox = new VBox();
+			connectVbox.getChildren().add(connectButton);
+			connectVbox.getChildren().add(connectText);
 
 			//create the board region
 			playboard = new GridPane();
@@ -306,20 +364,14 @@ public class Main extends Application {
 					};
 
 					button.setOnAction(boardClicked);
+					button.setDisable(true);
 					playboard.add(button, x, y);
 				}
 			}
 
-			int[][] oldboard = rboard.getBoard();
-			updateBoard(oldboard);
-			if (user.getColor() == 1) {
-				comp.makeMove();
-				tColor *= -1;
-				updateBoard(oldboard);
-			}
-
 			region.setTop(heading);
 			region.setCenter(playboard);
+			region.setRight(connectVbox);
 			return region;
 		}
 
