@@ -17,21 +17,28 @@ import java.net.*;
 import java.util.Optional;
 import java.util.Random;
 
-
 public class Main extends Application {
 
-	public GridPane playboard = null;
-	Player user = null;
-	Player opponent = null;
-	ReversiBoard rboard = null;
-	int pColor = 0; //player color
-	Computer comp = null;
-	int oColor = 0; //opponent color
-	public int tColor = 0; //color of entity taking this turn
+	private GridPane playboard = null;
+	private Player user = null;
+	private Player opponent = null;
+	private String pName = "";
+	private String oName = "";
+	private ReversiBoard rboard = null;
+	private int pColor = 0; //player color
+	private Computer comp = null;
+	private int oColor = 0; //opponent color
+	private int tColor = 0; //color of entity taking this turn
 
-	Socket socket = null;
-	DataInputStream in = null;
-	DataOutputStream out = null;
+	private Socket socket = null;
+	private DataInputStream in = null;
+	private DataOutputStream out = null;
+
+	private Scene mainscene = null;
+	private Stage pStage = null;
+	private Text winAnnounce = new Text();
+
+	private boolean listening; //for the master listener thread
 
 	@Override
 	public void start(Stage primaryStage) {
@@ -40,12 +47,14 @@ public class Main extends Application {
 			VBox mainroot = setMainScreen(primaryStage);
 
 			//create scene with root
-			Scene mainscene = new Scene(mainroot,900,600);
+			mainscene = new Scene(mainroot,900,600);
 			mainscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 
 			//puts scene on stage
 			primaryStage.setScene(mainscene);
 			primaryStage.setTitle("Reversi Launcher 3000");
+
+			pStage = primaryStage;
 
 			//display
 			primaryStage.show();
@@ -83,7 +92,6 @@ public class Main extends Application {
 		EventHandler<ActionEvent> SPClicked = new EventHandler<ActionEvent>() { 
 			public void handle(ActionEvent e) 
 			{ 
-
 				rboard = new ReversiBoard();
 
 				TextInputDialog dialog = new TextInputDialog("");
@@ -101,8 +109,9 @@ public class Main extends Application {
 					return;
 				}
 
-				user = new Player(name, rboard);
-				pColor = user.getColor();
+				Random rand = new Random();
+				pColor = rand.nextInt(2) * 2 - 1;
+				user = new Player(name, rboard, pColor);
 				comp = new Computer(rboard, pColor * -1);
 				oColor = pColor * -1;
 
@@ -135,16 +144,29 @@ public class Main extends Application {
 				else {
 					return;
 				}
-				user = new Player(name, rboard);
+				pName = name;
 
-				pColor = user.getColor();
+				String ip;
+				TextInputDialog ipdialog = new TextInputDialog();
+				ipdialog.setTitle("Connection");
+				ipdialog.setHeaderText("Connect to Server");
+				ipdialog.setContentText("Enter the server's ip address.");
+				Optional<String> result2 = ipdialog.showAndWait();
+				if (result2.isPresent()) {
+					ip = result2.get();
+					if (ip.trim().length() == 0)
+						return;
+				}
+				else {
+					return;
+				}
 
 				Platform.runLater(new Runnable()
 				{
 					@Override
 					public void run() {
 						try {
-							boolean connected = connect();
+							boolean connected = connect(ip);
 							if (connected) {
 								BorderPane gameRegion = createMultiplayerGameRegion();
 								Scene gameScene = new Scene(gameRegion, 900, 600);
@@ -176,206 +198,230 @@ public class Main extends Application {
 
 	}
 
-	public boolean connect() throws IOException, ClassNotFoundException {
+	//attempts to connect to the server with ip
+	public boolean connect(String ip) throws IOException, ClassNotFoundException {
 
-		InetAddress ip = InetAddress.getByName("localhost");
-		socket = new Socket(ip, 5331);
+		socket = new Socket(ip, 5337);
 
 		out = new DataOutputStream(socket.getOutputStream());
 		in = new DataInputStream(socket.getInputStream());
 
-		out.writeUTF(user.getName());
+		out.writeUTF("USERNAME#" + pName);
 		out.flush();
-
-		//Keep asking for name if name is a duplicate
-		TextInputDialog namedialog = new TextInputDialog();
-		namedialog.setTitle("Name");
-		namedialog.setHeaderText("That name is already taken!");
-		namedialog.setContentText("Enter name: ");
-		String reply = in.readUTF();
-		Optional<String> ans = null;
-		while (reply.equals("taken")) {
-			ans = namedialog.showAndWait();
-			if (!ans.isPresent() || ans.get().trim().length() == 0) {
-				out.writeUTF("EXIT");
-				in.close();
-				out.close();
-				socket.close();
-				return false;
-			}
-
-			out.writeUTF(ans.get());
-			reply = in.readUTF();
-			if (!reply.equals("taken"))
-				user.setName(ans.get());
-		}
-
-		/*
-		//opponent's name
-		TextInputDialog dialog = new TextInputDialog();
-		dialog.setContentText("Enter opponent's name:");
-		reply = "n";
-		while (reply.equals("n")) {
-
-			ans = null;
-			ans = dialog.showAndWait();
-			if (!ans.isPresent()) {
-				out.writeUTF("EXIT");
-				in.close();
-				out.close();
-				socket.close();
-				return false;
-			}
-
-			String oname = ans.get();
-
-			out.writeUTF(oname);
-			reply = in.readUTF();
-
-			if (reply.equals("n")) {
-				Alert alert = new Alert(AlertType.ERROR);
-				alert.setTitle("Error");
-				alert.setHeaderText("Opponent not found!");
-				alert.setContentText("Check for misspellings.");
-				alert.showAndWait();
-			}
-
-			out.flush();
-
-		}
-
-		Alert alert = new Alert(AlertType.INFORMATION);
-		alert.setTitle("Ready");
-		alert.setHeaderText("Successfully connected to opponent!");
-		alert.setContentText("Click Enter to proceed.");
-		alert.showAndWait();
-
-		out.flush();
-		
-		*/
 
 		return true;
 
 	}
-	
+
 	//creates the borderpane for the multiplayer game
-		public BorderPane createMultiplayerGameRegion() {
-			
-			tColor = -1;
+	public BorderPane createMultiplayerGameRegion() {
 
-			//TODO: Determine whoever goes first, disable all buttons for the second guy, then maybe make an opponent class?
-			
-			BorderPane region = new BorderPane();
-			region.setId("playregion");
+		tColor = -1;
 
-			//create top text
-			Text heading = new Text("REVERSI");
-			heading.setId("playregionhead");
-			
-			//create connect text
-			Text connectText = new Text();
-			
-			//create Connect button
-			Button connectButton = new Button("Find opponent");
-			EventHandler<ActionEvent> connectClicked = new EventHandler<ActionEvent>() {
-				public void handle(ActionEvent e) {
-					try {
-						connectText.setText("Looking for opponent...");
-						out.writeUTF("FINDOPPONENT");
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					}
-					Thread thread = new Thread(new Runnable() {
-						public void run() {
-							try {
-								//everything here is deciding who goes first
-								String opponentname = in.readUTF();
-								opponent = new Player(opponentname, rboard);
-								Random rand = new Random();
-								
-								//whoever has the larger number goes first
-								double num = rand.nextDouble();
-								out.writeUTF(num + "");
-								double opponum = Double.parseDouble(in.readUTF());
-								if (num > opponum) {
-									pColor = -1;
-									oColor = 1;
-									connectText.setText("Opponent found! You are black.");
-								}
-								else {
-									pColor = 1;
-									oColor = -1;
-									connectText.setText("Opponent found! You are white.");
-								}
-								
+		BorderPane region = new BorderPane();
+		region.setId("playregion");
 
-							} catch (IOException e) {
-								e.printStackTrace();
+		//create top text
+		Text heading = new Text("REVERSI");
+		heading.setId("playregionhead");
+
+		//create connect text
+		Text connectText = new Text();
+
+		//MASTER LISTENER THREAD
+		//listens to all possible messages
+		class Listener extends Thread {
+			
+			public void run() {
+				try {
+					while (listening) {
+						String[] received = in.readUTF().split("#");
+						String keyword = received[0];
+						if (keyword.equals("MOVE")) {
+							int oppoX = Integer.parseInt(received[1]);
+							int oppoY = Integer.parseInt(received[2]);
+							int[][] oldboard = rboard.getBoard();
+							opponent.makeMove(oppoX, oppoY);
+							tColor = pColor;
+							boolean canUserPlay = updateBoard(oldboard);
+							if (!canUserPlay) {
+								out.writeUTF("PASS");
 							}
 						}
-					});
-					thread.start();
-				}
-			};
-			connectButton.setOnAction(connectClicked);
-			
-			//create right vbox
-			VBox connectVbox = new VBox();
-			connectVbox.getChildren().add(connectButton);
-			connectVbox.getChildren().add(connectText);
-
-			//create the board region
-			playboard = new GridPane();
-			playboard.setId("playboard");
-
-			//sets sizes of row and column
-			for (int i = 0; i < 8; i++) {
-				int size = 50;
-				RowConstraints rc = new RowConstraints(size);
-				playboard.getRowConstraints().add(rc);
-				ColumnConstraints cc = new ColumnConstraints(size);
-				playboard.getColumnConstraints().add(cc);
-			}
-
-			//adds each button
-			for (int x = 0; x < 8; x++) {
-				for (int y = 0; y < 8; y++) {
-					GridButton button = new GridButton(x, y);
-					button.getStyleClass().add("gridsquare");
-					button.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-
-					EventHandler<ActionEvent> boardClicked = new EventHandler<ActionEvent>() {
-						public void handle(ActionEvent e)
-						{
-
+						else if (keyword.equals("PASS")) { //opponent decided to pass
+							tColor = pColor;
 							int[][] oldboard = rboard.getBoard();
-
-							int[] selCoords = button.getcoord();
-							user.makeMove(user.getColor(), selCoords[0], selCoords[1]);
-
-							tColor *= -1;
-							updateBoard(oldboard);
-
-							oldboard = rboard.getBoard();
-							comp.makeMove();
-							tColor *= -1;
-							updateBoard(oldboard);
+							boolean canUserPlay = updateBoard(oldboard);
+							if (!canUserPlay) {
+								out.writeUTF("GAMEEND");
+								listening = false;
+								endGame();
+							}
 						}
-					};
+						else if (keyword.equals("FOUNDOPPONENT")) {
+							//everything here is deciding who goes first
+							oName = received[1];
+							Random rand = new Random();
 
-					button.setOnAction(boardClicked);
-					button.setDisable(true);
-					playboard.add(button, x, y);
+							//whoever has the larger number goes first
+							double num = rand.nextDouble();
+							out.writeUTF(num + "");
+							double opponum = Double.parseDouble(in.readUTF());
+							if (num > opponum) {
+								pColor = -1;
+								oColor = 1;
+								connectText.setText("Opponent found! You are black.");
+								int[][] oldboard = rboard.getBoard();
+								updateBoard(oldboard);
+							}
+							else {
+								pColor = 1;
+								oColor = -1;
+								connectText.setText("Opponent found! You are white.");
+								int[][] oldboard = rboard.getBoard();
+								updateBoard(oldboard);
+								disableAllButtons();
+							}
+							user = new Player(pName, rboard, pColor);
+							opponent = new Player(oName, rboard, oColor);
+						}
+						else if (keyword.equals("OPPOEXIT")) {
+							out.writeUTF("OPPOEXIT");
+							connectText.setText("Opponent disconnected.");
+							listening = false;
+						}
+						else if (keyword.equals("GAMEEND")) {
+							endGame();
+							listening = false;
+						}
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
 			}
 
-			region.setTop(heading);
-			region.setCenter(playboard);
-			region.setRight(connectVbox);
-			return region;
+		}
+		listening = true;
+		Listener listener = new Listener();
+		listener.start();
+
+		//create Connect button
+		Button connectButton = new Button("Find opponent");
+		EventHandler<ActionEvent> connectClicked = new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent e) {
+				try {
+					connectText.setText("Looking for opponent...");
+					out.writeUTF("FINDOPPONENT");
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				connectButton.setDisable(true);
+			}
+		};
+		connectButton.setOnAction(connectClicked);
+
+		//create the board region
+		playboard = new GridPane();
+		playboard.setId("playboard");
+
+		//sets sizes of row and column
+		for (int i = 0; i < 8; i++) {
+			int size = 50;
+			RowConstraints rc = new RowConstraints(size);
+			playboard.getRowConstraints().add(rc);
+			ColumnConstraints cc = new ColumnConstraints(size);
+			playboard.getColumnConstraints().add(cc);
 		}
 
-	//creates the borderpane for the actual game
+		//adds each button
+		for (int x = 0; x < 8; x++) {
+			for (int y = 0; y < 8; y++) {
+				GridButton button = new GridButton(x, y);
+				button.getStyleClass().add("gridsquare");
+				button.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+				EventHandler<ActionEvent> boardClicked = new EventHandler<ActionEvent>() {
+					public void handle(ActionEvent e)
+					{
+
+						int[][] oldboard = rboard.getBoard();
+
+						int[] selCoords = button.getcoord();
+						user.makeMove(selCoords[0], selCoords[1]);
+						try {
+							out.writeUTF("MOVE#" + selCoords[0] + "#" + selCoords[1]);
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+
+						tColor = oColor;
+						updateBoard(oldboard);
+						disableAllButtons();
+					}
+				};
+
+				button.setOnAction(boardClicked);
+				button.setDisable(true);
+				playboard.add(button, x, y);
+			}
+		}
+
+		//create back button
+		Button backButton = new Button("Exit");
+		EventHandler<ActionEvent> exitClicked = new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent event) {
+				try {
+					Alert confirmation = new Alert(AlertType.CONFIRMATION);
+					confirmation.setContentText("Are you sure you want to exit the game?");
+					ButtonType yes = new ButtonType("Yes");
+					ButtonType no = new ButtonType("No");
+					confirmation.getButtonTypes().setAll(yes, no);
+					Optional<ButtonType> result = confirmation.showAndWait();
+					if (result.get() == yes) {
+						out.writeUTF("EXIT");
+						listening = false;
+						in.close();
+						out.close();
+						socket.close();
+						pStage.setScene(mainscene);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		backButton.setOnAction(exitClicked);
+
+		//create top hbox
+		HBox topHBox = new HBox();
+		topHBox.getChildren().add(backButton);
+		topHBox.getChildren().add(heading);
+		topHBox.getChildren().add(winAnnounce);
+
+		//create right vbox
+		VBox connectVbox = new VBox();
+		connectVbox.getChildren().add(connectButton);
+		connectVbox.getChildren().add(connectText);
+
+		region.setTop(topHBox);
+		region.setCenter(playboard);
+		region.setRight(connectVbox);
+		return region;
+	}
+
+	//disables all buttons, called when waiting for opponent's turn
+	public void disableAllButtons() {
+
+		for (int x = 0; x < 8; x++) {
+			for (int y = 0; y < 8; y++) {
+				GridButton button = (GridButton)playboard.getChildren().get(8 * x + y);
+				button.setDisable(true);
+			}
+		}
+
+	}
+
+	//creates the borderpane for the single player game
 	public BorderPane createGameRegion() {
 
 		tColor = -1;
@@ -386,6 +432,22 @@ public class Main extends Application {
 		//create top text
 		Text heading = new Text("REVERSI");
 		heading.setId("playregionhead");
+
+		//create back button
+		Button backButton = new Button("Exit");
+		EventHandler<ActionEvent> exitClicked = new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent event) {
+				Alert confirmation = new Alert(AlertType.CONFIRMATION);
+				confirmation.setContentText("Are you sure you want to exit the game?");
+				ButtonType yes = new ButtonType("Yes");
+				ButtonType no = new ButtonType("No");
+				confirmation.getButtonTypes().setAll(yes, no);
+				Optional<ButtonType> result = confirmation.showAndWait();
+				if (result.get() == yes)
+					pStage.setScene(mainscene);
+			}
+		};
+		backButton.setOnAction(exitClicked);
 
 		//create the board region
 		playboard = new GridPane();
@@ -414,17 +476,39 @@ public class Main extends Application {
 					{
 
 						int[][] oldboard = rboard.getBoard();
+						boolean canComputerPlay;
 
 						int[] selCoords = button.getcoord();
-						user.makeMove(user.getColor(), selCoords[0], selCoords[1]);
+						user.makeMove(selCoords[0], selCoords[1]);
 
-						tColor *= -1;
-						updateBoard(oldboard);
+						tColor = oColor;
+						canComputerPlay = updateBoard(oldboard);
 
-						oldboard = rboard.getBoard();
-						comp.makeMove();
-						tColor *= -1;
-						updateBoard(oldboard);
+						if (canComputerPlay) {
+							boolean canUserPlay;
+							while (true) {
+								oldboard = rboard.getBoard();
+								comp.makeMove();
+								tColor = pColor;
+								canUserPlay = updateBoard(oldboard);
+								if (canUserPlay)
+									break;
+								oldboard = rboard.getBoard();
+								tColor = oColor;
+								canComputerPlay = updateBoard(oldboard);
+								if (!canComputerPlay) {
+									endGame();
+									break;
+								}
+							}
+						}
+						else {
+							tColor = pColor;
+							oldboard = rboard.getBoard();
+							boolean canUserPlay = updateBoard(oldboard);
+							if (!canUserPlay)
+								endGame();
+						}
 					}
 				};
 
@@ -441,15 +525,21 @@ public class Main extends Application {
 			updateBoard(oldboard);
 		}
 
-		region.setTop(heading);
+		//create top hbox
+		HBox topHBox = new HBox();
+		topHBox.getChildren().add(backButton);
+		topHBox.getChildren().add(heading);
+		topHBox.getChildren().add(winAnnounce);
+
+		region.setTop(topHBox);
 		region.setCenter(playboard);
 		return region;
 	}
 
 	//updates which buttons are disabled through legalboard, and which colors are which through the actual board
-	public void updateBoard(int[][] oldboard) {
+	public boolean updateBoard(int[][] oldboard) {
 
-		rboard.updateLegal(tColor);
+		boolean canPlay = !rboard.updateLegal(tColor);
 		int[][] newboard = rboard.getBoard();
 		int[][][] legalboard = rboard.getLegal();
 
@@ -489,6 +579,24 @@ public class Main extends Application {
 					button.setDisable(false);
 			}
 		}
+
+		return canPlay;
+
+	}
+
+	public void endGame() {
+		
+		int wColor = rboard.findWinner();
+		if (wColor == pColor) {
+			winAnnounce.setText("You win!");
+		}
+		else if (wColor == pColor * -1) {
+			winAnnounce.setText("You lose!");
+		}
+		else {
+			winAnnounce.setText("You tied with your opponent!");
+		}
+		//Platform.exit();
 
 	}
 

@@ -13,12 +13,11 @@ public class Player {
 	private int color; //color of piece
 	private ReversiBoard rboard; //shares the board with anyone else playing, and also with Main
 	
-	public Player(String name, ReversiBoard playBoard) {
+	public Player(String name, ReversiBoard playBoard, int c) {
 		
 		Random rand = new Random();
 		this.name = name;
-		//color = rand.nextInt(2) * 2 - 1;
-		color = -1;
+		color = c;
 		rboard = playBoard;
 		
 	}
@@ -31,7 +30,7 @@ public class Player {
 	}
 	
 	//assumes that move is legal
-	public void makeMove(int color, int x, int y) {
+	public void makeMove(int x, int y) {
 		
 		rboard.setPiece(color, x, y);
 		

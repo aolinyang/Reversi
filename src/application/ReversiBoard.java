@@ -204,5 +204,21 @@ public class ReversiBoard {
 		return coords[0] < 0 || coords[0] > 7 || coords[1] < 0 || coords[1] > 7;
 
 	}
+	
+	//returns color of piece who won
+	public int findWinner() {
+		
+		int sum = 0;
+		for (int i = 0; i < 8; i++)
+			for (int j = 0; j < 8; j++)
+				sum += board[i][j];
+		
+		if (sum > 0)
+			return 1;
+		if (sum < 0)
+			return -1;
+		return 0;
+		
+	}
 
 }

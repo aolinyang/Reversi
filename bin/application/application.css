@@ -1,5 +1,5 @@
 #mainvbox {
-	-fx-background-image: url("../background.jpg");
+	-fx-background-image: url('background.jpg');
     -fx-background-repeat: stretch;
     -fx-background-size: 900 600;
     -fx-background-position: center center;
@@ -21,7 +21,7 @@
 }
 
 .gridsquare {
-	-fx-background-image: url('../emptysquare.png');
+	-fx-background-image: url('emptysquare.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
   	-fx-border-color: black;
@@ -30,37 +30,37 @@
 }
 
 .blacksquare {
-	-fx-background-image: url('../blackpiece.png');
+	-fx-background-image: url('blackpiece.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
 }
 
 .bsrecentself {
-	-fx-background-image: url('../bprecentself.png');
+	-fx-background-image: url('bprecentself.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
 }
 
 .bsrecentoppo {
-	-fx-background-image: url('../bprecentoppo.png');
+	-fx-background-image: url('bprecentoppo.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
 }
 
 .whitesquare {
-	-fx-background-image: url('../whitepiece.png');
+	-fx-background-image: url('whitepiece.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
 }
 
 .wsrecentself {
-	-fx-background-image: url('../wprecentself.png');
+	-fx-background-image: url('wprecentself.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
 }
 
 .wsrecentoppo {
-	-fx-background-image: url('../wprecentoppo.png');
+	-fx-background-image: url('wprecentoppo.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
 }

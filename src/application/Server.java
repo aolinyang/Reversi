@@ -10,10 +10,14 @@ public class Server {
 
 	public static void main(String[] args) throws IOException {
 
-		ServerSocket ss = new ServerSocket(5331);
+		@SuppressWarnings("resource")
+		ServerSocket ss = new ServerSocket(5337);
 		Socket socket;
 
 		System.out.println("[INFO] Server has started.");
+		InetAddress ip = InetAddress.getLocalHost();
+		System.out.println("[INFO] The IP Address is " + ip.getHostAddress());
+		System.out.println("[INFO] Use the above IP Address for clients to connect.");
 
 		while (true) {
 
@@ -51,6 +55,7 @@ class ClientHandler implements Runnable {
 	private ClientHandler opponent;
 	private DataOutputStream odos;
 	private boolean isSearching;
+	private ClientHandler self = this;
 
 	// constructor 
 	public ClientHandler(Socket s, String name, 
@@ -63,54 +68,14 @@ class ClientHandler implements Runnable {
 		odos = null;
 	}
 
-	@Override
-	public void run() {
+	class OpponentFinder extends Thread {
 
-		String origMessage;
-		String[] received;
-
-		try {
-			
-			//correspond with client to make sure name isn't a duplicate
-			boolean duplicate;
-			String trialname = "";
-			do {
-				received = in.readUTF().split("#");
-				trialname = received[0];
-				if (trialname.equals("EXIT")) {
-					exit();
-					return;
-				}
-				duplicate = false;
-				synchronized(Server.clients) {
-					for (ClientHandler client : Server.clients) {
-						if (client.getName().equalsIgnoreCase(trialname)) {
-							duplicate = true;
-							break;
-						}
-					}
-				}
-				if (duplicate) {
-					out.writeUTF("taken");
-				}
-				else {
-					out.writeUTF("nottaken");
-				}
-			} while(duplicate);
-
-			name = trialname;
-
-			//expecting client to click find opponent or back button
-			received = in.readUTF().split("#");
-			if (!received[0].equals("FINDOPPONENT")) {
-				exit();
-				return;
-			}
+		public void run() {
 			isSearching = true;
 			int index = 0;
 			while (opponent == null) {
 				ClientHandler ch = Server.clients.get(index);
-				if (ch.isSearching && !ch.getName().equals(name)) {
+				if (ch.isSearching && ch != self) {
 					opponent = ch;
 					odos = opponent.getDOS();
 				}
@@ -119,34 +84,53 @@ class ClientHandler implements Runnable {
 					index = 0;
 			}
 			isSearching = false;
-			out.writeUTF(opponent.getName());
+			try {
+				out.writeUTF("FOUNDOPPONENT#" + opponent.getName());
+				String num = in.readUTF();
+				odos.writeUTF(num);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 
-			String num = in.readUTF();
-			odos.writeUTF(num);
-			
+	}
 
-			//now begin to send moves
-			//Message format: msg#xcor#ycor
-			//If a move, msg =  MOVE
+	@Override
+	public void run() {
+
+		String origMessage;
+		String[] received;
+		String keyword;
+
+		try {
 			while(true) {
-
 				out.flush();
 
 				origMessage = in.readUTF();
 				received = origMessage.split("#");
-				if (received[0].equals("EXIT")) {
+				keyword = received[0];
+
+				if (keyword.equals("USERNAME")) {
+					name = received[1];
+				}
+				else if (keyword.equals("FINDOPPONENT")) {
+					OpponentFinder finder = new OpponentFinder();
+					finder.start();
+				}
+				else if (keyword.equals("OPPOEXIT")) { //opponent already exited
 					exit();
 					return;
 				}
-
-				String recipientname = received[1];
-				synchronized(Server.clients) {
-					for (ClientHandler client : Server.clients) {
-						if (client.getName().equals(recipientname)) {
-							client.getDOS().writeUTF(origMessage);
-							break;
-						}
-					}
+				else if (keyword.equals("MOVE") || keyword.equals("PASS"))
+					odos.writeUTF(origMessage);
+				else if (keyword.equals("GAMEEND")) {
+					odos.writeUTF(origMessage);
+				}
+				else if (keyword.equals("EXIT")) {
+					if (odos != null)
+						odos.writeUTF("OPPOEXIT");
+					exit();
+					return;
 				}
 
 			}
