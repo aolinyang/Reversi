@@ -73,7 +73,7 @@ class ClientHandler implements Runnable {
 		public void run() {
 			isSearching = true;
 			int index = 0;
-			while (opponent == null) {
+			while (!Thread.interrupted() && opponent == null) {
 				ClientHandler ch = Server.clients.get(index);
 				if (ch.isSearching && ch != self) {
 					opponent = ch;
@@ -83,12 +83,13 @@ class ClientHandler implements Runnable {
 				if (index >= Server.clients.size())
 					index = 0;
 			}
-			isSearching = false;
 			try {
-				out.writeUTF("FOUNDOPPONENT#" + opponent.getName());
-				String num = in.readUTF();
-				odos.writeUTF(num);
-			} catch (IOException e) {
+				if (opponent != null) {
+					out.writeUTF("FOUNDOPPONENT#" + opponent.getName());
+				}
+				Thread.sleep(10);
+				isSearching = false;
+			} catch (IOException | InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
@@ -101,6 +102,7 @@ class ClientHandler implements Runnable {
 		String origMessage;
 		String[] received;
 		String keyword;
+		OpponentFinder finder = null;
 
 		try {
 			while(true) {
@@ -114,15 +116,31 @@ class ClientHandler implements Runnable {
 					name = received[1];
 				}
 				else if (keyword.equals("FINDOPPONENT")) {
-					OpponentFinder finder = new OpponentFinder();
+					finder = new OpponentFinder();
 					finder.start();
 				}
-				else if (keyword.equals("OPPOEXIT")) { //opponent already exited
-					exit();
-					return;
+				else if (keyword.equals("CANCELFINDOPPONENT")) {
+					isSearching = false;
+					finder.interrupt();
 				}
-				else if (keyword.equals("MOVE") || keyword.equals("PASS"))
+				else if (keyword.equals("CHALLENGERNUM")) {
+					String num = received[1];
+					odos.writeUTF(num);
+				}
+				else if (keyword.equals("OPPOEXIT") || keyword.equals("REMOVEOPPONENT")) { //opponent already exited
+					opponent = null;
+					odos = null;
+				}
+				else if (keyword.equals("MOVE") || 
+						 keyword.equals("PASS") || 
+						 keyword.equals("REMATCHREQUEST") ||
+						 keyword.equals("REMATCHACCEPT"))
 					odos.writeUTF(origMessage);
+				else if (keyword.equals("REMATCHDECLINE")) {
+					odos.writeUTF(origMessage);
+					opponent = null;
+					odos = null;
+				}
 				else if (keyword.equals("GAMEEND")) {
 					odos.writeUTF(origMessage);
 				}

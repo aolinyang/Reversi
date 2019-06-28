@@ -116,6 +116,8 @@ public class ReversiBoard {
 	//sets a piece in accordance with move, assuming board legality is already updated and is consistent with move's color,
 	//and assumes that move is legal (will end in a same color piece)
 	public void setPiece(int color, int x, int y) {
+		
+		boolean placed = false;
 
 		//follows legalboard coordinate system
 		int[] xDirList = {0, 1, 1, 1, 0, -1, -1, -1};
@@ -123,11 +125,13 @@ public class ReversiBoard {
 
 		for (int dir = 0; dir < 8; dir++) {
 			int step = 0;
-			if (legalboard[x][y][dir + 1] > 0)
+			if (legalboard[x][y][dir + 1] > 0) {
 				for (int i = 0; i <= legalboard[x][y][dir + 1]; i++) {
 					board[x + step * xDirList[dir]][y + step * yDirList[dir]] = color;
 					step++;
 				}
+				placed = true;
+			}
 		}
 
 	}

@@ -1,21 +1,30 @@
 package application;
 
-import javafx.application.*;
-import javafx.event.*;
-import javafx.geometry.*;
-import javafx.stage.Stage;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.text.*;
-import javafx.scene.layout.*;
-
-import java.io.*;
-import java.net.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
 import java.util.Optional;
 import java.util.Random;
+
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.TextInputDialog;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.RowConstraints;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.stage.Stage;
 
 public class Main extends Application {
 
@@ -37,6 +46,9 @@ public class Main extends Application {
 	private Scene mainscene = null;
 	private Stage pStage = null;
 	private Text winAnnounce = new Text();
+	private Button rematchButton = new Button();
+	private Button connectButton = new Button();
+	private VBox sideVBox = new VBox();
 
 	private boolean listening; //for the master listener thread
 
@@ -118,7 +130,7 @@ public class Main extends Application {
 				BorderPane gameRegion = createGameRegion();
 				Scene gameScene = new Scene(gameRegion, 900, 600);
 				gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
-				primaryStage.setScene(gameScene);
+				pStage.setScene(gameScene);
 			} 
 		}; 
 
@@ -168,10 +180,10 @@ public class Main extends Application {
 						try {
 							boolean connected = connect(ip);
 							if (connected) {
-								BorderPane gameRegion = createMultiplayerGameRegion();
+								BorderPane gameRegion = createMultiplayerGameRegion(false);
 								Scene gameScene = new Scene(gameRegion, 900, 600);
 								gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
-								primaryStage.setScene(gameScene);
+								pStage.setScene(gameScene);
 							}
 						} catch (ClassNotFoundException | IOException e) {
 							e.printStackTrace();
@@ -214,12 +226,15 @@ public class Main extends Application {
 	}
 
 	//creates the borderpane for the multiplayer game
-	public BorderPane createMultiplayerGameRegion() {
+	public BorderPane createMultiplayerGameRegion(boolean playedBefore) {
 
 		tColor = -1;
 
-		BorderPane region = new BorderPane();
-		region.setId("playregion");
+		BorderPane gameRegion = new BorderPane();
+		gameRegion.setId("playregion");
+
+		HBox topHBox = new HBox();
+		sideVBox = new VBox();
 
 		//create top text
 		Text heading = new Text("REVERSI");
@@ -228,10 +243,18 @@ public class Main extends Application {
 		//create connect text
 		Text connectText = new Text();
 
+		//create connect and cancel buttons
+		connectButton = new Button("Find opponent");
+		Button cancelButton = new Button("Cancel");
+
+		//create the board region
+		playboard = new GridPane();
+		playboard.setId("playboard");
+
 		//MASTER LISTENER THREAD
 		//listens to all possible messages
 		class Listener extends Thread {
-			
+
 			public void run() {
 				try {
 					while (listening) {
@@ -241,12 +264,21 @@ public class Main extends Application {
 							int oppoX = Integer.parseInt(received[1]);
 							int oppoY = Integer.parseInt(received[2]);
 							int[][] oldboard = rboard.getBoard();
+							rboard.updateLegal(oColor);
 							opponent.makeMove(oppoX, oppoY);
 							tColor = pColor;
 							boolean canUserPlay = updateBoard(oldboard);
 							if (!canUserPlay) {
 								out.writeUTF("PASS");
+								tColor = oColor;
 							}
+
+							/*Platform.runLater(new Runnable() {
+								public void run() {
+									endGameMP();
+								}
+							});*/
+
 						}
 						else if (keyword.equals("PASS")) { //opponent decided to pass
 							tColor = pColor;
@@ -254,18 +286,27 @@ public class Main extends Application {
 							boolean canUserPlay = updateBoard(oldboard);
 							if (!canUserPlay) {
 								out.writeUTF("GAMEEND");
-								listening = false;
-								endGame();
+								Platform.runLater(new Runnable() {
+									public void run() {
+										endGameMP();
+									}
+								});
 							}
 						}
 						else if (keyword.equals("FOUNDOPPONENT")) {
+							Platform.runLater(new Runnable() {
+								public void run() {
+									sideVBox.getChildren().remove(cancelButton);
+								}
+							});
+
 							//everything here is deciding who goes first
 							oName = received[1];
 							Random rand = new Random();
 
 							//whoever has the larger number goes first
 							double num = rand.nextDouble();
-							out.writeUTF(num + "");
+							out.writeUTF("CHALLENGERNUM#" + num);
 							double opponum = Double.parseDouble(in.readUTF());
 							if (num > opponum) {
 								pColor = -1;
@@ -285,14 +326,128 @@ public class Main extends Application {
 							user = new Player(pName, rboard, pColor);
 							opponent = new Player(oName, rboard, oColor);
 						}
+
 						else if (keyword.equals("OPPOEXIT")) {
 							out.writeUTF("OPPOEXIT");
 							connectText.setText("Opponent disconnected.");
-							listening = false;
+							Platform.runLater(new Runnable() {
+								public void run() {
+									Alert stayornot = new Alert(AlertType.CONFIRMATION);
+									stayornot.setTitle("Opponent disconnect");
+									stayornot.setHeaderText("Opponent disconnected from game!");
+									stayornot.setContentText("Stay in server or disconnect?");
+									ButtonType stay = new ButtonType("Stay");
+									ButtonType exit = new ButtonType("Exit");
+									stayornot.getButtonTypes().setAll(stay, exit);
+									Optional<ButtonType> choice = stayornot.showAndWait();
+									if (choice.get() == stay) {
+										connectButton.setDisable(false);
+										rboard = new ReversiBoard();
+										disableAllButtons();
+									}
+									else {
+										listening = false;
+										try {
+											in.close();
+											out.close();
+											socket.close();
+											out.writeUTF("EXIT");
+										} catch (IOException e) {
+											e.printStackTrace();
+										}
+										pStage.setScene(mainscene);
+									}
+								}
+							});
 						}
 						else if (keyword.equals("GAMEEND")) {
-							endGame();
-							listening = false;
+							Platform.runLater(new Runnable() {
+								public void run() {
+									endGameMP();
+								}
+							});
+						}
+						else if (keyword.equals("REMATCHREQUEST")) {
+							Platform.runLater(new Runnable() {
+								public void run() {
+									try {
+										Alert rematchask = new Alert(AlertType.CONFIRMATION);
+										rematchask.setTitle("Rematch");
+										rematchask.setHeaderText("Opponent is requesting a rematch.");
+										rematchask.setContentText("");
+										ButtonType accept = new ButtonType("Accept");
+										ButtonType decline = new ButtonType("Decline");
+										rematchask.getButtonTypes().setAll(accept, decline);
+										Optional<ButtonType> ans = rematchask.showAndWait();
+										if (ans.get() == accept) {
+											Random rand = new Random();
+											pColor = rand.nextInt(2) * 2 - 1;
+											oColor = pColor * -1;
+											out.writeUTF("REMATCHACCEPT#" + oColor);
+											rboard = new ReversiBoard();
+											user = new Player(pName, rboard, pColor);
+											opponent = new Player(oName, rboard, oColor);
+											BorderPane newregion = createMultiplayerGameRegion(true);
+											Scene newscene = new Scene(newregion, 900, 600);
+											newscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+											pStage.setScene(newscene);
+											int[][] oldboard = rboard.getBoard();
+											updateBoard(oldboard);
+											if (pColor == 1)
+												disableAllButtons();
+										}
+										else {
+											out.writeUTF("REMATCHDECLINE");
+											connectButton.setDisable(false);
+											rematchButton.setDisable(true);
+											Alert msg = new Alert(AlertType.CONFIRMATION);
+											msg.setTitle("Decline");
+											msg.setHeaderText("You declined the rematch.");
+											msg.showAndWait();
+											rboard = new ReversiBoard();
+										}
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+							});
+						}
+						else if (keyword.equals("REMATCHACCEPT")) {
+							pColor = Integer.parseInt(received[1]);
+							oColor = pColor * -1;
+							rboard = new ReversiBoard();
+							user = new Player(pName, rboard, pColor);
+							opponent = new Player(oName, rboard, oColor);
+							Platform.runLater(new Runnable() {
+								public void run() {
+									BorderPane newregion = createMultiplayerGameRegion(true);
+									Scene newscene = new Scene(newregion, 900, 600);
+									newscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+									pStage.setScene(newscene);
+									int[][] oldboard = rboard.getBoard();
+									updateBoard(oldboard);
+									if (pColor == 1)
+										disableAllButtons();
+								}
+							});
+						}
+						else if (keyword.equals("REMATCHDECLINE")) {
+							Platform.runLater(new Runnable() {
+								public void run() {
+									Alert alert = new Alert(AlertType.CONFIRMATION);
+									alert.setTitle("Declined");
+									alert.setHeaderText("Opponent declined rematch!");
+									alert.showAndWait();
+									connectButton.setDisable(false);
+									rematchButton.setDisable(true);
+									rboard = new ReversiBoard();
+									try {
+										out.writeUTF("REMOVEOPPONENT");
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+							});
 						}
 					}
 				} catch (IOException e) {
@@ -302,16 +457,34 @@ public class Main extends Application {
 
 		}
 		listening = true;
-		Listener listener = new Listener();
-		listener.start();
 
-		//create Connect button
-		Button connectButton = new Button("Find opponent");
+		if (!playedBefore) {
+			Listener listener = new Listener();
+			listener.start();
+		}
+
+		//set action to cancel button
+		EventHandler<ActionEvent> cancelClicked = new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent e) {
+				try {
+					out.writeUTF("CANCELFINDOPPONENT");
+					sideVBox.getChildren().remove(cancelButton);
+					connectButton.setDisable(false);
+					connectText.setText("");
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		};
+		cancelButton.setOnAction(cancelClicked);
+
+		//set action to connect button
 		EventHandler<ActionEvent> connectClicked = new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent e) {
 				try {
 					connectText.setText("Looking for opponent...");
 					out.writeUTF("FINDOPPONENT");
+					sideVBox.getChildren().add(cancelButton);
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
@@ -319,10 +492,9 @@ public class Main extends Application {
 			}
 		};
 		connectButton.setOnAction(connectClicked);
-
-		//create the board region
-		playboard = new GridPane();
-		playboard.setId("playboard");
+		if (playedBefore) {
+			connectButton.setDisable(true);
+		}
 
 		//sets sizes of row and column
 		for (int i = 0; i < 8; i++) {
@@ -393,20 +565,18 @@ public class Main extends Application {
 		backButton.setOnAction(exitClicked);
 
 		//create top hbox
-		HBox topHBox = new HBox();
 		topHBox.getChildren().add(backButton);
 		topHBox.getChildren().add(heading);
 		topHBox.getChildren().add(winAnnounce);
 
 		//create right vbox
-		VBox connectVbox = new VBox();
-		connectVbox.getChildren().add(connectButton);
-		connectVbox.getChildren().add(connectText);
+		sideVBox.getChildren().add(connectButton);
+		sideVBox.getChildren().add(connectText);
 
-		region.setTop(topHBox);
-		region.setCenter(playboard);
-		region.setRight(connectVbox);
-		return region;
+		gameRegion.setTop(topHBox);
+		gameRegion.setCenter(playboard);
+		gameRegion.setRight(sideVBox);
+		return gameRegion;
 	}
 
 	//disables all buttons, called when waiting for opponent's turn
@@ -426,12 +596,14 @@ public class Main extends Application {
 
 		tColor = -1;
 
-		BorderPane region = new BorderPane();
-		region.setId("playregion");
+		BorderPane gameRegion = new BorderPane();
+		gameRegion.setId("playregion");
 
 		//create top text
 		Text heading = new Text("REVERSI");
 		heading.setId("playregionhead");
+
+		sideVBox = new VBox();
 
 		//create back button
 		Button backButton = new Button("Exit");
@@ -443,8 +615,10 @@ public class Main extends Application {
 				ButtonType no = new ButtonType("No");
 				confirmation.getButtonTypes().setAll(yes, no);
 				Optional<ButtonType> result = confirmation.showAndWait();
-				if (result.get() == yes)
+				if (result.get() == yes) {
+					listening = false;
 					pStage.setScene(mainscene);
+				}
 			}
 		};
 		backButton.setOnAction(exitClicked);
@@ -497,7 +671,7 @@ public class Main extends Application {
 								tColor = oColor;
 								canComputerPlay = updateBoard(oldboard);
 								if (!canComputerPlay) {
-									endGame();
+									endGameSP();
 									break;
 								}
 							}
@@ -507,7 +681,7 @@ public class Main extends Application {
 							oldboard = rboard.getBoard();
 							boolean canUserPlay = updateBoard(oldboard);
 							if (!canUserPlay)
-								endGame();
+								endGameSP();
 						}
 					}
 				};
@@ -531,9 +705,10 @@ public class Main extends Application {
 		topHBox.getChildren().add(heading);
 		topHBox.getChildren().add(winAnnounce);
 
-		region.setTop(topHBox);
-		region.setCenter(playboard);
-		return region;
+		gameRegion.setTop(topHBox);
+		gameRegion.setCenter(playboard);
+		gameRegion.setRight(sideVBox);
+		return gameRegion;
 	}
 
 	//updates which buttons are disabled through legalboard, and which colors are which through the actual board
@@ -572,6 +747,11 @@ public class Main extends Application {
 						button.getStyleClass().add("blacksquare");
 					}
 				}
+				else {
+					button.getStyleClass().clear();
+					button.setStyle("null");
+					button.getStyleClass().add("gridsquare");
+				}
 
 				if (legalboard[x][y][0] == 0)
 					button.setDisable(true);
@@ -584,8 +764,8 @@ public class Main extends Application {
 
 	}
 
-	public void endGame() {
-		
+	public void endGameSP() {
+
 		int wColor = rboard.findWinner();
 		if (wColor == pColor) {
 			winAnnounce.setText("You win!");
@@ -596,7 +776,61 @@ public class Main extends Application {
 		else {
 			winAnnounce.setText("You tied with your opponent!");
 		}
-		//Platform.exit();
+
+		Button playAgainButton = new Button("Play Again");
+		EventHandler<ActionEvent> playAgainButtonclicked = new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent e) {
+				sideVBox.getChildren().remove(playAgainButton);
+
+				rboard = new ReversiBoard();
+
+				Random rand = new Random();
+				pColor = rand.nextInt(2) * 2 - 1;
+				user = new Player(pName, rboard, pColor);
+				comp = new Computer(rboard, pColor * -1);
+				oColor = pColor * -1;
+				tColor = -1;
+
+				BorderPane gameRegion = createGameRegion();
+				Scene gameScene = new Scene(gameRegion, 900, 600);
+				gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+				pStage.setScene(gameScene);
+
+			}
+		};
+		playAgainButton.setOnAction(playAgainButtonclicked);
+		sideVBox.getChildren().add(playAgainButton);
+
+	}
+
+	public void endGameMP() {
+
+		int wColor = rboard.findWinner();
+		if (wColor == pColor) {
+			winAnnounce.setText("You win!");
+		}
+		else if (wColor == pColor * -1) {
+			winAnnounce.setText("You lose!");
+		}
+		else {
+			winAnnounce.setText("You tied with your opponent!");
+		}
+
+		rematchButton = new Button("Rematch");
+		EventHandler<ActionEvent> rematchClicked = new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent e) {
+				try {
+					connectButton.setDisable(true);
+					rematchButton.setDisable(true);
+					out.writeUTF("REMATCHREQUEST");
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		};
+		rematchButton.setOnAction(rematchClicked);
+		sideVBox.getChildren().add(rematchButton);
+		connectButton.setDisable(false);
 
 	}
 

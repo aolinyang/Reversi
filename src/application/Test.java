@@ -1,30 +1,40 @@
 package application;
 
-import java.util.Random;
+import java.util.*;
 
 public class Test {
+	
+	public static ArrayList<Obj> list = null;
 
 	public static void main(String[] args) {
 		
-		ReversiBoard b = new ReversiBoard();
-		Computer c = new Computer(b, 1);
+		list = new ArrayList<Obj>();
 		
-		int x = 1;
-		for (int i = 0; i < 20; i++) {
-			b.updateLegal(x);
-			b.printlegal();
-			System.out.println();
-			c.makeMove();
-			b.print();
-			System.out.println();
-			x *= -1;
-			//c.color = x;
-		}
+		Obj one = new Obj(1);
+		Obj two = new Obj(2);
+		Obj three = new Obj(3);
+		list.add(one);
+		list.add(two);
+		list.add(three);
 		
-		Random rand = new Random();
-		for (int i = 0; i < 100; i++)
-			System.out.println(rand.nextInt(2) * 2 - 1);
+		one.exit();
+		System.out.println(list.size());
+		System.out.println(list.get(0).num);
 		
+	}
+	
+}
+
+class Obj {
+	
+	int num;
+	
+	public Obj(int n) {
+		num = n;
+	}
+	
+	public void exit() {
+		Test.list.remove(this);
 	}
 	
 }
