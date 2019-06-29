@@ -1,23 +1,39 @@
+@font-face {
+    src: url('../Exo2-Bold.ttf');
+}
+
 #mainvbox {
 	-fx-background-image: url('background.jpg');
     -fx-background-repeat: stretch;
-    -fx-background-size: 900 600;
+    -fx-background-size: 1200 800;
     -fx-background-position: center center;
    	-fx-alignment: center;
+   	-fx-spacing: 30px;
 }
 
 #titletext {
-    -fx-font: 100px Tahoma;
-    -fx-fill: linear-gradient(from 0% 0% to 100% 200%, repeat, aqua 0%, red 50%);
-    -fx-stroke: black;
+    -fx-font-family: 'Exo 2';
+    -fx-font-size: 200px;
+    -fx-fill: linear-gradient(from 0% 0% to 100% 200%, repeat, black 30%, white 65%);
+    -fx-background-color: red;
     -fx-stroke-width: 1;
+    
 }
 
 .mainbutton {
-	-fx-padding: 20 100;
+	-fx-padding: 20 260;
 	-fx-font-size: 40;
 	-fx-focus-color: transparent;
 	-fx-faint-focus-color: transparent;
+	-fx-background-radius: 50;
+}
+
+.mainbutton2 {
+	-fx-padding: 20 230;
+	-fx-font-size: 40;
+	-fx-focus-color: transparent;
+	-fx-faint-focus-color: transparent;
+	-fx-background-radius: 50;
 }
 
 .gridsquare {
@@ -27,42 +43,49 @@
   	-fx-border-color: black;
 	-fx-focus-color: transparent;
 	-fx-faint-focus-color: transparent;
+	-fx-background-size: cover;
 }
 
 .blacksquare {
 	-fx-background-image: url('blackpiece.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
+  	-fx-background-size: cover;
 }
 
 .bsrecentself {
 	-fx-background-image: url('bprecentself.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
+  	-fx-background-size: cover;
 }
 
 .bsrecentoppo {
 	-fx-background-image: url('bprecentoppo.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
+  	-fx-background-size: cover;
 }
 
 .whitesquare {
 	-fx-background-image: url('whitepiece.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
+  	-fx-background-size: cover;
 }
 
 .wsrecentself {
 	-fx-background-image: url('wprecentself.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
+  	-fx-background-size: cover;
 }
 
 .wsrecentoppo {
 	-fx-background-image: url('wprecentoppo.png');
   	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
+  	-fx-background-size: cover;
 }
 
 #playboard {

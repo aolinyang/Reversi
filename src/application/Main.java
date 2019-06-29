@@ -7,11 +7,12 @@ import java.net.Socket;
 import java.util.Optional;
 import java.util.Random;
 
+import javafx.animation.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.scene.Scene;
+import javafx.scene.*;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -25,8 +26,12 @@ import javafx.scene.layout.RowConstraints;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 public class Main extends Application {
+	
+	private int windowWidth = 1200;
+	private int windowHeight = 800;
 
 	private GridPane playboard = null;
 	private Player user = null;
@@ -44,6 +49,10 @@ public class Main extends Application {
 	private DataOutputStream out = null;
 
 	private Scene mainscene = null;
+	private Text title = null;
+	private Button singlePlayerButton = null;
+	private Button multiPlayerButton = null;
+	private Button quitButton = null;
 	private Stage pStage = null;
 	private Text winAnnounce = new Text();
 	private Button rematchButton = new Button();
@@ -59,7 +68,7 @@ public class Main extends Application {
 			VBox mainroot = setMainScreen(primaryStage);
 
 			//create scene with root
-			mainscene = new Scene(mainroot,900,600);
+			mainscene = new Scene(mainroot,windowWidth,windowHeight);
 			mainscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 
 			//puts scene on stage
@@ -75,6 +84,19 @@ public class Main extends Application {
 		}
 	}
 
+	public void animateMain() {
+
+		Node[] mainNodes = {title, singlePlayerButton, multiPlayerButton, quitButton};
+
+		for (Node n : mainNodes) {
+			FadeTransition fade = new FadeTransition(Duration.millis(2500), n);
+			fade.setFromValue(0);
+			fade.setToValue(1);
+			fade.play();
+		}
+
+	}
+
 	//creates the Region for the main screen
 	public VBox setMainScreen(Stage primaryStage) {
 
@@ -84,21 +106,24 @@ public class Main extends Application {
 		main.setId("mainvbox");
 
 		//adds title
-		Text title = new Text("REVERSI");
+		title = new Text("REVERSI");
 		title.setId("titletext");
 		main.getChildren().add(title);
 
 		//adds buttons
-		Button singlePlayerButton = new Button("Singleplayer");
-		singlePlayerButton.getStyleClass().add("mainbutton");
-		Button multiPlayerButton = new Button("Multiplayer");
+		//There are 2 mainbutton CSS classes - this deals with a bug where the top button is
+		//a little wider than the others
+		singlePlayerButton = new Button("Play Computer");
+		singlePlayerButton.getStyleClass().add("mainbutton2");
+		multiPlayerButton = new Button("Play Online");
 		multiPlayerButton.getStyleClass().add("mainbutton");
-		Button quitButton = new Button("Quit Game");
+		quitButton = new Button("Quit Game");
 		quitButton.getStyleClass().add("mainbutton");
 		main.getChildren().add(singlePlayerButton);
 		main.getChildren().add(multiPlayerButton);
 		main.getChildren().add(quitButton);
 
+		animateMain();
 
 		//when single player is clicked
 		EventHandler<ActionEvent> SPClicked = new EventHandler<ActionEvent>() { 
@@ -128,7 +153,7 @@ public class Main extends Application {
 				oColor = pColor * -1;
 
 				BorderPane gameRegion = createGameRegion();
-				Scene gameScene = new Scene(gameRegion, 900, 600);
+				Scene gameScene = new Scene(gameRegion, windowWidth, windowHeight);
 				gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 				pStage.setScene(gameScene);
 			} 
@@ -181,7 +206,7 @@ public class Main extends Application {
 							boolean connected = connect(ip);
 							if (connected) {
 								BorderPane gameRegion = createMultiplayerGameRegion(false);
-								Scene gameScene = new Scene(gameRegion, 900, 600);
+								Scene gameScene = new Scene(gameRegion, windowWidth, windowHeight);
 								gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 								pStage.setScene(gameScene);
 							}
@@ -273,11 +298,11 @@ public class Main extends Application {
 								tColor = oColor;
 							}
 
-							/*Platform.runLater(new Runnable() {
+							Platform.runLater(new Runnable() {
 								public void run() {
 									endGameMP();
 								}
-							});*/
+							});
 
 						}
 						else if (keyword.equals("PASS")) { //opponent decided to pass
@@ -294,6 +319,8 @@ public class Main extends Application {
 							}
 						}
 						else if (keyword.equals("FOUNDOPPONENT")) {
+							tColor = -1;
+
 							Platform.runLater(new Runnable() {
 								public void run() {
 									sideVBox.getChildren().remove(cancelButton);
@@ -356,6 +383,7 @@ public class Main extends Application {
 											e.printStackTrace();
 										}
 										pStage.setScene(mainscene);
+										animateMain();
 									}
 								}
 							});
@@ -388,7 +416,7 @@ public class Main extends Application {
 											user = new Player(pName, rboard, pColor);
 											opponent = new Player(oName, rboard, oColor);
 											BorderPane newregion = createMultiplayerGameRegion(true);
-											Scene newscene = new Scene(newregion, 900, 600);
+											Scene newscene = new Scene(newregion, windowWidth, windowHeight);
 											newscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 											pStage.setScene(newscene);
 											int[][] oldboard = rboard.getBoard();
@@ -421,7 +449,7 @@ public class Main extends Application {
 							Platform.runLater(new Runnable() {
 								public void run() {
 									BorderPane newregion = createMultiplayerGameRegion(true);
-									Scene newscene = new Scene(newregion, 900, 600);
+									Scene newscene = new Scene(newregion, windowWidth, windowHeight);
 									newscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 									pStage.setScene(newscene);
 									int[][] oldboard = rboard.getBoard();
@@ -556,6 +584,7 @@ public class Main extends Application {
 						out.close();
 						socket.close();
 						pStage.setScene(mainscene);
+						animateMain();
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -618,6 +647,7 @@ public class Main extends Application {
 				if (result.get() == yes) {
 					listening = false;
 					pStage.setScene(mainscene);
+					animateMain();
 				}
 			}
 		};
@@ -683,6 +713,7 @@ public class Main extends Application {
 							if (!canUserPlay)
 								endGameSP();
 						}
+
 					}
 				};
 
@@ -792,7 +823,7 @@ public class Main extends Application {
 				tColor = -1;
 
 				BorderPane gameRegion = createGameRegion();
-				Scene gameScene = new Scene(gameRegion, 900, 600);
+				Scene gameScene = new Scene(gameRegion, windowWidth, windowHeight);
 				gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 				pStage.setScene(gameScene);
 
