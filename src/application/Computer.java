@@ -11,11 +11,13 @@ public class Computer {
 
 	private ReversiBoard rboard;
 	private int color;
+	private int size;
 
 	public Computer(ReversiBoard playBoard, int color) {
 
 		rboard = playBoard;
 		this.color = color;
+		size = rboard.getSize();
 
 	}
 
@@ -45,8 +47,8 @@ public class Computer {
 		int[] xDirList = {0, 1, 1, 1, 0, -1, -1, -1};
 		int[] yDirList = {1, 1, 0, -1, -1, -1, 0, 1};
 
-		for (int x = 0; x < 8; x++) {
-			for (int y = 0; y < 8; y++) {
+		for (int x = 0; x < size; x++) {
+			for (int y = 0; y < size; y++) {
 
 				int[] curSquare = legalboard[x][y];
 				if (curSquare[0] == 0) //make sure there is a legal move
@@ -54,9 +56,9 @@ public class Computer {
 
 				int tpoints = 0; //total points for this piece
 				//at corner
-				if (x == 0 && y == 0 || x == 7 && y == 0 || x == 0 && y == 7 || x == 7 && y == 7)
+				if (x == 0 && y == 0 || x == size-1 && y == 0 || x == 0 && y == size-1 || x == size-1 && y == size-1)
 					tpoints += 100;
-				else if (x == 0 || x == 7 || y == 0 || y == 7) //at edge
+				else if (x == 0 || x == size-1 || y == 0 || y == size-1) //at edge
 					tpoints += 8;
 				
 				if (isNextToCorner(x, y))
@@ -122,21 +124,24 @@ public class Computer {
 	private boolean isNextToCorner(int x, int y) {
 
 		int distance1 = x*x + y*y;
-		int distance2 = (x-7)*(x-7) + y*y;
-		int distance3 = x*x + (y-7)*(y-7);
-		int distance4 = (x-7)*(x-7) + (y-7)*(y-7);
+		int distance2 = (x-(size-1))*(x-(size-1)) + y*y;
+		int distance3 = x*x + (y-(size-1))*(y-(size-1));
+		int distance4 = (x-(size-1))*(x-(size-1)) + (y-(size-1))*(y-(size-1));
 
-		return distance1 <= 2 || distance2 <= 2 || distance3 <= 2 || distance4 <= 2;
+		return (distance1 <= 2 && rboard.getSpace(0, 0) != 2) || 
+			   (distance2 <= 2 && rboard.getSpace(size-1, 0) != 2) || 
+			   (distance3 <= 2 && rboard.getSpace(0, size-1) != 2) || 
+			   (distance4 <= 2 && rboard.getSpace(size-1, size-1) != 2);
 
 	}
 	
 	private boolean isTravelOnEdge(int x, int y, int xdir, int ydir) {
 		
-		if (x == 0 || x == 7) {
+		if (x == 0 || x == (size-1)) {
 			if (ydir != 0 && xdir == 0)
 				return true;
 		}
-		if (y == 0 || y == 7) {
+		if (y == 0 || y == (size-1)) {
 			if (xdir != 0 && ydir == 0)
 				return true;
 		}

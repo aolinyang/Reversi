@@ -30,8 +30,8 @@ import javafx.util.Duration;
 
 public class Main extends Application {
 	
-	private int windowWidth = 1200;
-	private int windowHeight = 800;
+	private int windowWidth = 1350;
+	private int windowHeight = 900;
 
 	private GridPane playboard = null;
 	private Player user = null;
@@ -43,6 +43,9 @@ public class Main extends Application {
 	private Computer comp = null;
 	private int oColor = 0; //opponent color
 	private int tColor = 0; //color of entity taking this turn
+	
+	private int numBlocked = 15;
+	private int size = 32;
 
 	private Socket socket = null;
 	private DataInputStream in = null;
@@ -129,7 +132,7 @@ public class Main extends Application {
 		EventHandler<ActionEvent> SPClicked = new EventHandler<ActionEvent>() { 
 			public void handle(ActionEvent e) 
 			{ 
-				rboard = new ReversiBoard();
+				rboard = new ReversiBoard(size, numBlocked);
 
 				TextInputDialog dialog = new TextInputDialog("");
 				dialog.setTitle("Name");
@@ -164,7 +167,7 @@ public class Main extends Application {
 			public void handle(ActionEvent e) 
 			{ 
 
-				rboard = new ReversiBoard();
+				rboard = new ReversiBoard(size, numBlocked);
 
 				Random rand = new Random();
 				TextInputDialog dialog = new TextInputDialog("Player" + rand.nextInt(100));
@@ -369,7 +372,7 @@ public class Main extends Application {
 									Optional<ButtonType> choice = stayornot.showAndWait();
 									if (choice.get() == stay) {
 										connectButton.setDisable(false);
-										rboard = new ReversiBoard();
+										rboard = new ReversiBoard(size, numBlocked);
 										disableAllButtons();
 									}
 									else {
@@ -412,7 +415,7 @@ public class Main extends Application {
 											pColor = rand.nextInt(2) * 2 - 1;
 											oColor = pColor * -1;
 											out.writeUTF("REMATCHACCEPT#" + oColor);
-											rboard = new ReversiBoard();
+											rboard = new ReversiBoard(size, numBlocked);
 											user = new Player(pName, rboard, pColor);
 											opponent = new Player(oName, rboard, oColor);
 											BorderPane newregion = createMultiplayerGameRegion(true);
@@ -432,7 +435,7 @@ public class Main extends Application {
 											msg.setTitle("Decline");
 											msg.setHeaderText("You declined the rematch.");
 											msg.showAndWait();
-											rboard = new ReversiBoard();
+											rboard = new ReversiBoard(size, numBlocked);
 										}
 									} catch (IOException e) {
 										e.printStackTrace();
@@ -443,7 +446,7 @@ public class Main extends Application {
 						else if (keyword.equals("REMATCHACCEPT")) {
 							pColor = Integer.parseInt(received[1]);
 							oColor = pColor * -1;
-							rboard = new ReversiBoard();
+							rboard = new ReversiBoard(size, numBlocked);
 							user = new Player(pName, rboard, pColor);
 							opponent = new Player(oName, rboard, oColor);
 							Platform.runLater(new Runnable() {
@@ -468,7 +471,7 @@ public class Main extends Application {
 									alert.showAndWait();
 									connectButton.setDisable(false);
 									rematchButton.setDisable(true);
-									rboard = new ReversiBoard();
+									rboard = new ReversiBoard(size, numBlocked);
 									try {
 										out.writeUTF("REMOVEOPPONENT");
 									} catch (IOException e) {
@@ -658,17 +661,17 @@ public class Main extends Application {
 		playboard.setId("playboard");
 
 		//sets sizes of row and column
-		for (int i = 0; i < 8; i++) {
-			int size = 50;
-			RowConstraints rc = new RowConstraints(size);
+		for (int i = 0; i < size; i++) {
+			int len = 640/size;
+			RowConstraints rc = new RowConstraints(len);
 			playboard.getRowConstraints().add(rc);
-			ColumnConstraints cc = new ColumnConstraints(size);
+			ColumnConstraints cc = new ColumnConstraints(len);
 			playboard.getColumnConstraints().add(cc);
 		}
 
 		//adds each button
-		for (int x = 0; x < 8; x++) {
-			for (int y = 0; y < 8; y++) {
+		for (int x = 0; x < size; x++) {
+			for (int y = 0; y < size; y++) {
 				GridButton button = new GridButton(x, y);
 				button.getStyleClass().add("gridsquare");
 				//Image img = new Image(getClass().getResourceAsStream("emptysquare.png"));
@@ -749,9 +752,9 @@ public class Main extends Application {
 		int[][] newboard = rboard.getBoard();
 		int[][][] legalboard = rboard.getLegal();
 
-		for (int x = 0; x < 8; x++) {
-			for (int y = 0; y < 8; y++) {
-				GridButton button = (GridButton)playboard.getChildren().get(8 * x + y);
+		for (int x = 0; x < size; x++) {
+			for (int y = 0; y < size; y++) {
+				GridButton button = (GridButton)playboard.getChildren().get(size * x + y);
 				if (rboard.getSpace(x, y) == 1) {
 					button.getStyleClass().clear();
 					button.setStyle("null");
@@ -778,10 +781,15 @@ public class Main extends Application {
 						button.getStyleClass().add("blacksquare");
 					}
 				}
-				else {
+				else if (rboard.getSpace(x, y) == 0) {
 					button.getStyleClass().clear();
 					button.setStyle("null");
 					button.getStyleClass().add("gridsquare");
+				}
+				else {
+					button.getStyleClass().clear();
+					button.setStyle("null");
+					button.getStyleClass().add("blockedsquare");
 				}
 
 				if (legalboard[x][y][0] == 0)
@@ -813,7 +821,7 @@ public class Main extends Application {
 			public void handle(ActionEvent e) {
 				sideVBox.getChildren().remove(playAgainButton);
 
-				rboard = new ReversiBoard();
+				rboard = new ReversiBoard(size, numBlocked);
 
 				Random rand = new Random();
 				pColor = rand.nextInt(2) * 2 - 1;
