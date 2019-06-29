@@ -20,7 +20,8 @@ public class ReversiBoard {
 	 */
 	private int[][] board; //the board for the pieces. 0 = empty, 1 = white, -1 = black, 2 = blocked
 	private int numBlocked; //the number of blocked spaces
-	private int bSize;
+	private int length;
+	private int height;
 
 	/*
 	 * COORDINATE SYSTEM FOR LEGAL BOARD:
@@ -41,20 +42,21 @@ public class ReversiBoard {
 
 	private int numLegal; //number of legal spaces
 
-	public ReversiBoard(int size, int n) {
+	public ReversiBoard(int len, int hei, int n) {
 
-		board = new int[size][size];
-		bSize = size;
+		board = new int[len][hei];
+		length = len;
+		height = hei;
 
 		//sets up standard Reversi opening
-		board[size/2 - 1][size/2 - 1] = -1;
-		board[size/2 - 1][size/2] = 1;
-		board[size/2][size/2 - 1] = 1;
-		board[size/2][size/2] = -1;
+		board[len/2 - 1][hei/2 - 1] = -1;
+		board[len/2 - 1][hei/2] = 1;
+		board[len/2][hei/2 - 1] = 1;
+		board[len/2][hei/2] = -1;
 
 		//sets up legalboard
-		legalboard = new int[size][size][9];
-		numLegal = size * size - n;
+		legalboard = new int[len][hei][9];
+		numLegal = len * hei - n;
 
 		numBlocked = n;
 
@@ -66,10 +68,11 @@ public class ReversiBoard {
 			int tX;
 			int tY;
 			do {
-				tNum = rand.nextInt(size * size);
-				tX = tNum%size;
-				tY = tNum/size;
-			} while(bCoords.contains(tNum) || ( tX >= size/2 - 2 && tX <= size/2 + 1 && tY >= size/2 - 2 && tY <= size/2 + 1));
+				tNum = rand.nextInt(len * hei);
+				tX = tNum%len;
+				tY = tNum/len;
+			} while(bCoords.contains(tNum) || 
+				   (tX >= len/2 - 2 && tX <= len/2 + 1 && tY >= hei/2 - 2 && tY <= hei/2 + 1));
 			bCoords.add(tNum);
 			board[tX][tY] = 2;
 			counter++;
@@ -79,8 +82,8 @@ public class ReversiBoard {
 
 	//prints board in terminal. For testing purposes only.
 	public void print() {
-		for (int y = 0; y < bSize; y++) {
-			for (int x = 0; x < bSize; x++) {
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < length; x++) {
 				if (board[x][y] == 1)
 					System.out.print("W ");
 				else if (board[x][y] == -1)
@@ -96,8 +99,8 @@ public class ReversiBoard {
 
 	//prints first layer of legalboard in terminal. For testing purposes only.
 	public void printlegal() {
-		for (int y = 0; y < bSize; y++) {
-			for (int x = 0; x < bSize; x++) {
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < length; x++) {
 				System.out.print(legalboard[x][y][0] + " ");
 			}
 			System.out.println();
@@ -121,9 +124,9 @@ public class ReversiBoard {
 	//returns the 3-d matrix that determines legality of moves
 	public int[][][] getLegal() {
 
-		int[][][] newlegal = new int[bSize][bSize][9];
-		for (int i = 0; i < bSize; i++)
-			for (int j = 0; j < bSize; j++)
+		int[][][] newlegal = new int[length][height][9];
+		for (int i = 0; i < length; i++)
+			for (int j = 0; j < height; j++)
 				for (int k = 0; k < 9; k++)
 					newlegal[i][j][k] = legalboard[i][j][k];
 		return newlegal;
@@ -132,9 +135,9 @@ public class ReversiBoard {
 
 	public int[][] getBoard() {
 
-		int[][] newboard = new int[bSize][bSize];
-		for (int i = 0; i < bSize; i++)
-			for (int j = 0; j < bSize; j++)
+		int[][] newboard = new int[length][height];
+		for (int i = 0; i < length; i++)
+			for (int j = 0; j < height; j++)
 				newboard[i][j] = board[i][j];
 		return newboard;
 
@@ -170,8 +173,8 @@ public class ReversiBoard {
 		int[] yDirList = {1, 1, 0, -1, -1, -1, 0, 1};
 
 		//loops through the entire board
-		for (int x = 0; x < bSize; x++) {
-			for (int y = 0; y < bSize; y++) {
+		for (int x = 0; x < length; x++) {
+			for (int y = 0; y < height; y++) {
 
 				//first assume it's illegal until proven otherwise
 				legalboard[x][y][0] = 0;
@@ -229,20 +232,21 @@ public class ReversiBoard {
 	//takes in a tuple, return true if out of bounds
 	public boolean outOfBounds(int[] coords) {
 
-		return coords[0] < 0 || coords[0] > bSize-1 || coords[1] < 0 || coords[1] > bSize-1;
+		return coords[0] < 0 || coords[0] > length-1 || coords[1] < 0 || coords[1] > height-1;
 
 	}
 	
-	public int getSize() {
-		return bSize;
+	public int[] getDimensions() {
+		int[] dims = {length, height};
+		return dims;
 	}
 
 	//returns color of piece who won
 	public int findWinner() {
 
 		int sum = 0;
-		for (int i = 0; i < bSize; i++)
-			for (int j = 0; j < bSize; j++) {
+		for (int i = 0; i < length; i++)
+			for (int j = 0; j < height; j++) {
 				if (board[i][j] != 2)
 					sum += board[i][j];
 			}

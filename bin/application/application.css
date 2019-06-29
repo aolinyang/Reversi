@@ -36,6 +36,10 @@
 	-fx-background-radius: 50;
 }
 
+.smallborder {
+	-fx-border-color: black;
+}
+
 .gridsquare {
 	-fx-background-image: url('emptysquare.png');
   	-fx-background-repeat: no-repeat;

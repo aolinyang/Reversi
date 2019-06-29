@@ -24,12 +24,14 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.RowConstraints;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
 public class Main extends Application {
-	
+
 	private int windowWidth = 1350;
 	private int windowHeight = 900;
 
@@ -43,9 +45,15 @@ public class Main extends Application {
 	private Computer comp = null;
 	private int oColor = 0; //opponent color
 	private int tColor = 0; //color of entity taking this turn
-	
+
+	//special modifications
 	private int numBlocked = 15;
-	private int size = 32;
+	private int length = 4;
+	private int height = 10;
+	private int lowerlength = 6;
+	private int higherlength = 12;
+	private int lowerheight = 6;
+	private int higherheight = 12;
 
 	private Socket socket = null;
 	private DataInputStream in = null;
@@ -132,7 +140,7 @@ public class Main extends Application {
 		EventHandler<ActionEvent> SPClicked = new EventHandler<ActionEvent>() { 
 			public void handle(ActionEvent e) 
 			{ 
-				rboard = new ReversiBoard(size, numBlocked);
+				rboard = new ReversiBoard(length, height, numBlocked);
 
 				TextInputDialog dialog = new TextInputDialog("");
 				dialog.setTitle("Name");
@@ -167,7 +175,7 @@ public class Main extends Application {
 			public void handle(ActionEvent e) 
 			{ 
 
-				rboard = new ReversiBoard(size, numBlocked);
+				rboard = new ReversiBoard(length, height, numBlocked);
 
 				Random rand = new Random();
 				TextInputDialog dialog = new TextInputDialog("Player" + rand.nextInt(100));
@@ -372,7 +380,7 @@ public class Main extends Application {
 									Optional<ButtonType> choice = stayornot.showAndWait();
 									if (choice.get() == stay) {
 										connectButton.setDisable(false);
-										rboard = new ReversiBoard(size, numBlocked);
+										rboard = new ReversiBoard(length, height, numBlocked);
 										disableAllButtons();
 									}
 									else {
@@ -415,7 +423,7 @@ public class Main extends Application {
 											pColor = rand.nextInt(2) * 2 - 1;
 											oColor = pColor * -1;
 											out.writeUTF("REMATCHACCEPT#" + oColor);
-											rboard = new ReversiBoard(size, numBlocked);
+											rboard = new ReversiBoard(length, height, numBlocked);
 											user = new Player(pName, rboard, pColor);
 											opponent = new Player(oName, rboard, oColor);
 											BorderPane newregion = createMultiplayerGameRegion(true);
@@ -435,7 +443,7 @@ public class Main extends Application {
 											msg.setTitle("Decline");
 											msg.setHeaderText("You declined the rematch.");
 											msg.showAndWait();
-											rboard = new ReversiBoard(size, numBlocked);
+											rboard = new ReversiBoard(length, height, numBlocked);
 										}
 									} catch (IOException e) {
 										e.printStackTrace();
@@ -446,7 +454,7 @@ public class Main extends Application {
 						else if (keyword.equals("REMATCHACCEPT")) {
 							pColor = Integer.parseInt(received[1]);
 							oColor = pColor * -1;
-							rboard = new ReversiBoard(size, numBlocked);
+							rboard = new ReversiBoard(length, height, numBlocked);
 							user = new Player(pName, rboard, pColor);
 							opponent = new Player(oName, rboard, oColor);
 							Platform.runLater(new Runnable() {
@@ -471,7 +479,7 @@ public class Main extends Application {
 									alert.showAndWait();
 									connectButton.setDisable(false);
 									rematchButton.setDisable(true);
-									rboard = new ReversiBoard(size, numBlocked);
+									rboard = new ReversiBoard(length, height, numBlocked);
 									try {
 										out.writeUTF("REMOVEOPPONENT");
 									} catch (IOException e) {
@@ -661,67 +669,103 @@ public class Main extends Application {
 		playboard.setId("playboard");
 
 		//sets sizes of row and column
-		for (int i = 0; i < size; i++) {
-			int len = 640/size;
-			RowConstraints rc = new RowConstraints(len);
-			playboard.getRowConstraints().add(rc);
-			ColumnConstraints cc = new ColumnConstraints(len);
+		int size = (int)Math.min(640/length, 640/height);
+		int maxDim = (int)Math.max(length, height);
+		for (int i = 0; i < maxDim; i++) {
+			ColumnConstraints cc = new ColumnConstraints(size);
 			playboard.getColumnConstraints().add(cc);
+			RowConstraints rc = new RowConstraints(size);
+			playboard.getRowConstraints().add(rc);
 		}
 
 		//adds each button
-		for (int x = 0; x < size; x++) {
-			for (int y = 0; y < size; y++) {
-				GridButton button = new GridButton(x, y);
-				button.getStyleClass().add("gridsquare");
-				//Image img = new Image(getClass().getResourceAsStream("emptysquare.png"));
-				//button.setGraphic(new ImageView(img));
-				button.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+		for (int x = 0; x < length; x++) {
+			for (int y = 0; y < height; y++) {
+				if (rboard.getSpace(x, y) != 2) {
+					GridButton button = new GridButton(x, y);
+					button.getStyleClass().add("gridsquare");
+					//Image img = new Image(getClass().getResourceAsStream("emptysquare.png"));
+					//button.setGraphic(new ImageView(img));
+					button.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
-				EventHandler<ActionEvent> boardClicked = new EventHandler<ActionEvent>() {
-					public void handle(ActionEvent e)
-					{
+					EventHandler<ActionEvent> boardClicked = new EventHandler<ActionEvent>() {
+						public void handle(ActionEvent e)
+						{
+							int[][] oldboard = rboard.getBoard();
+							boolean canComputerPlay;
 
-						int[][] oldboard = rboard.getBoard();
-						boolean canComputerPlay;
+							int[] selCoords = button.getcoord();
+							user.makeMove(selCoords[0], selCoords[1]);
 
-						int[] selCoords = button.getcoord();
-						user.makeMove(selCoords[0], selCoords[1]);
+							tColor = oColor;
+							canComputerPlay = updateBoard(oldboard);
 
-						tColor = oColor;
-						canComputerPlay = updateBoard(oldboard);
-
-						if (canComputerPlay) {
-							boolean canUserPlay;
-							while (true) {
-								oldboard = rboard.getBoard();
-								comp.makeMove();
-								tColor = pColor;
-								canUserPlay = updateBoard(oldboard);
-								if (canUserPlay)
-									break;
-								oldboard = rboard.getBoard();
-								tColor = oColor;
-								canComputerPlay = updateBoard(oldboard);
-								if (!canComputerPlay) {
-									endGameSP();
-									break;
+							if (canComputerPlay) {
+								boolean canUserPlay;
+								while (true) {
+									oldboard = rboard.getBoard();
+									comp.makeMove();
+									tColor = pColor;
+									canUserPlay = updateBoard(oldboard);
+									if (canUserPlay)
+										break;
+									oldboard = rboard.getBoard();
+									tColor = oColor;
+									canComputerPlay = updateBoard(oldboard);
+									if (!canComputerPlay) {
+										endGameSP();
+										break;
+									}
 								}
 							}
-						}
-						else {
-							tColor = pColor;
-							oldboard = rboard.getBoard();
-							boolean canUserPlay = updateBoard(oldboard);
-							if (!canUserPlay)
-								endGameSP();
-						}
+							else {
+								tColor = pColor;
+								oldboard = rboard.getBoard();
+								boolean canUserPlay = updateBoard(oldboard);
+								if (!canUserPlay)
+									endGameSP();
+							}
 
-					}
-				};
+						}
+					};
 
-				button.setOnAction(boardClicked);
-				playboard.add(button, x, y);
+					button.setOnAction(boardClicked);
+					playboard.add(button, x, y);
+				}
+				else {
+					Rectangle rect = new Rectangle();
+					rect.setFill(Color.grayRgb(140));
+					rect.setStroke(Color.BLACK);
+					rect.setWidth(size);
+					rect.setHeight(size);
+					//rect.getStyleClass().add("smallborder");
+					playboard.add(rect, x, y);
+				}
+			}
+		}
+		int grayscale = 140;
+		if (length > height) {
+			for (int x = 0; x < length; x++) {
+				for (int y = height; y < length; y++) {
+					Rectangle rect = new Rectangle();
+					//rect.setFill(Color.grayRgb(grayscale));
+					rect.setFill(Color.TRANSPARENT);
+					rect.setWidth(size);
+					rect.setHeight(size);
+					playboard.add(rect, x, y);
+				}
+			}
+		}
+		else if (height > length) {
+			for (int x = length; x < height; x++) {
+				for (int y = 0; y < height; y++) {
+					Rectangle rect = new Rectangle();
+					//rect.setFill(Color.grayRgb(grayscale));
+					rect.setFill(Color.TRANSPARENT);
+					rect.setWidth(size);
+					rect.setHeight(size);
+					playboard.add(rect, x, y);
+				}
 			}
 		}
 
@@ -752,50 +796,47 @@ public class Main extends Application {
 		int[][] newboard = rboard.getBoard();
 		int[][][] legalboard = rboard.getLegal();
 
-		for (int x = 0; x < size; x++) {
-			for (int y = 0; y < size; y++) {
-				GridButton button = (GridButton)playboard.getChildren().get(size * x + y);
-				if (rboard.getSpace(x, y) == 1) {
-					button.getStyleClass().clear();
-					button.setStyle("null");
-					if (newboard[x][y] != oldboard[x][y]) {
-						if (pColor == 1)
-							button.getStyleClass().add("wsrecentself");
-						else
-							button.getStyleClass().add("wsrecentoppo");
+		for (int x = 0; x < length; x++) {
+			for (int y = 0; y < height; y++) {
+				Node button = playboard.getChildren().get(height * x + y);
+				if (button instanceof GridButton) {
+					if (rboard.getSpace(x, y) == 1) {
+						button.getStyleClass().clear();
+						button.setStyle("null");
+						if (newboard[x][y] != oldboard[x][y]) {
+							if (pColor == 1)
+								button.getStyleClass().add("wsrecentself");
+							else
+								button.getStyleClass().add("wsrecentoppo");
+						}
+						else {
+							button.getStyleClass().add("whitesquare");
+						}
 					}
-					else {
-						button.getStyleClass().add("whitesquare");
+					else if (rboard.getSpace(x, y) == -1) {
+						button.getStyleClass().clear();
+						button.setStyle("null");
+						if (newboard[x][y] != oldboard[x][y]) {
+							if (pColor == -1)
+								button.getStyleClass().add("bsrecentself");
+							else
+								button.getStyleClass().add("bsrecentoppo");
+						}
+						else {
+							button.getStyleClass().add("blacksquare");
+						}
 					}
-				}
-				else if (rboard.getSpace(x, y) == -1) {
-					button.getStyleClass().clear();
-					button.setStyle("null");
-					if (newboard[x][y] != oldboard[x][y]) {
-						if (pColor == -1)
-							button.getStyleClass().add("bsrecentself");
-						else
-							button.getStyleClass().add("bsrecentoppo");
+					else if (rboard.getSpace(x, y) == 0) {
+						button.getStyleClass().clear();
+						button.setStyle("null");
+						button.getStyleClass().add("gridsquare");
 					}
-					else {
-						button.getStyleClass().add("blacksquare");
-					}
-				}
-				else if (rboard.getSpace(x, y) == 0) {
-					button.getStyleClass().clear();
-					button.setStyle("null");
-					button.getStyleClass().add("gridsquare");
-				}
-				else {
-					button.getStyleClass().clear();
-					button.setStyle("null");
-					button.getStyleClass().add("blockedsquare");
-				}
 
-				if (legalboard[x][y][0] == 0)
-					button.setDisable(true);
-				else
-					button.setDisable(false);
+					if (legalboard[x][y][0] == 0)
+						button.setDisable(true);
+					else
+						button.setDisable(false);
+				}
 			}
 		}
 
@@ -821,7 +862,7 @@ public class Main extends Application {
 			public void handle(ActionEvent e) {
 				sideVBox.getChildren().remove(playAgainButton);
 
-				rboard = new ReversiBoard(size, numBlocked);
+				rboard = new ReversiBoard(length, height, numBlocked);
 
 				Random rand = new Random();
 				pColor = rand.nextInt(2) * 2 - 1;
