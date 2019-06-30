@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Random;
 
@@ -35,7 +36,6 @@ public class Main extends Application {
 	private int windowWidth = 1350;
 	private int windowHeight = 900;
 
-	private GridPane playboard = null;
 	private Player user = null;
 	private Player opponent = null;
 	private String pName = "";
@@ -50,10 +50,8 @@ public class Main extends Application {
 	private int numBlocked = 15;
 	private int length = 4;
 	private int height = 10;
-	private int lowerlength = 6;
-	private int higherlength = 12;
-	private int lowerheight = 6;
-	private int higherheight = 12;
+	private int[] userbounds = {4, 6, 4, 6}; //min length, max length, min height, max height
+	private int[] bounds = new int[4]; //combined bounds of opponent and user
 
 	private Socket socket = null;
 	private DataInputStream in = null;
@@ -65,6 +63,8 @@ public class Main extends Application {
 	private Button multiPlayerButton = null;
 	private Button quitButton = null;
 	private Stage pStage = null;
+	private BorderPane gameRegion = null;
+	private GridPane playboard = null;
 	private Text winAnnounce = new Text();
 	private Button rematchButton = new Button();
 	private Button connectButton = new Button();
@@ -261,12 +261,84 @@ public class Main extends Application {
 
 	}
 
+	//chooses board dimensions and which squares are blocked, sends that info to other player
+	public void sendBoardInfo() {
+
+		try {
+			Random rand = new Random();
+			length = rand.nextInt(bounds[1] - bounds[0] + 1) + bounds[0];
+			height = rand.nextInt(bounds[3] - bounds[2] + 1) + bounds[2];
+			numBlocked = rand.nextInt((int)Math.sqrt((length+2)*(height+2)));
+			rboard = new ReversiBoard(length, height, numBlocked);
+			int[][] blocked = rboard.getBlockedSpaces();
+			String bmsg = ""; //blocked message
+			for (int i = 0; i < blocked.length; i++) {
+				bmsg += "#" + blocked[i][0];
+				bmsg += "#" + blocked[i][1];
+			}
+			out.writeUTF("FINALDIMENSIONS#" + length + "#" + height + bmsg);
+
+			generatePlayboard();
+
+			Platform.runLater(new Runnable() {
+				public void run() {
+					tColor = -1;
+					gameRegion.setCenter(playboard);
+					int[][] oldboard = rboard.getBoard();
+					updateBoard(oldboard);
+					if (pColor == 1)
+						disableAllButtons();
+				}
+			});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	//receives board dimensions and blocked squares from opponent
+	public void receiveBoardInfo() {
+
+		try {
+			String[] dimensioninfo = in.readUTF().split("#");
+			length = Integer.parseInt(dimensioninfo[1]);
+			height = Integer.parseInt(dimensioninfo[2]);
+			ArrayList<Integer[]> allBlocked = new ArrayList<Integer[]>();
+			int index = 3;
+			while (index < dimensioninfo.length) {
+				Integer[] coord = new Integer[2];
+				coord[0] = Integer.parseInt(dimensioninfo[index]);
+				index++;
+				coord[1] = Integer.parseInt(dimensioninfo[index]);
+				index++;
+				allBlocked.add(coord);
+			}
+			rboard = new ReversiBoard(length, height, allBlocked);
+
+			generatePlayboard();
+
+			Platform.runLater(new Runnable() {
+				public void run() {
+					tColor = -1;
+					gameRegion.setCenter(playboard);
+					int[][] oldboard = rboard.getBoard();
+					updateBoard(oldboard);
+					if (pColor == 1)
+						disableAllButtons();
+				}
+			});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
 	//creates the borderpane for the multiplayer game
 	public BorderPane createMultiplayerGameRegion(boolean playedBefore) {
 
 		tColor = -1;
 
-		BorderPane gameRegion = new BorderPane();
+		gameRegion = new BorderPane();
 		gameRegion.setId("playregion");
 
 		HBox topHBox = new HBox();
@@ -330,6 +402,16 @@ public class Main extends Application {
 							}
 						}
 						else if (keyword.equals("FOUNDOPPONENT")) {
+							int[] oppobounds = {Integer.parseInt(received[2]),
+									Integer.parseInt(received[3]),
+									Integer.parseInt(received[4]),
+									Integer.parseInt(received[5])
+							};
+							bounds[0] = (int)Math.max(userbounds[0], oppobounds[0]);
+							bounds[1] = (int)Math.min(userbounds[1], oppobounds[1]);
+							bounds[2] = (int)Math.max(userbounds[2], oppobounds[2]);
+							bounds[3] = (int)Math.min(userbounds[3], oppobounds[3]);
+
 							tColor = -1;
 
 							Platform.runLater(new Runnable() {
@@ -350,15 +432,13 @@ public class Main extends Application {
 								pColor = -1;
 								oColor = 1;
 								connectText.setText("Opponent found! You are black.");
-								int[][] oldboard = rboard.getBoard();
-								updateBoard(oldboard);
+								sendBoardInfo();
 							}
 							else {
 								pColor = 1;
 								oColor = -1;
 								connectText.setText("Opponent found! You are white.");
-								int[][] oldboard = rboard.getBoard();
-								updateBoard(oldboard);
+								receiveBoardInfo();
 								disableAllButtons();
 							}
 							user = new Player(pName, rboard, pColor);
@@ -380,16 +460,11 @@ public class Main extends Application {
 									Optional<ButtonType> choice = stayornot.showAndWait();
 									if (choice.get() == stay) {
 										connectButton.setDisable(false);
-										rboard = new ReversiBoard(length, height, numBlocked);
 										disableAllButtons();
 									}
 									else {
-										listening = false;
 										try {
-											in.close();
-											out.close();
-											socket.close();
-											out.writeUTF("EXIT");
+											disconnect();
 										} catch (IOException e) {
 											e.printStackTrace();
 										}
@@ -423,15 +498,14 @@ public class Main extends Application {
 											pColor = rand.nextInt(2) * 2 - 1;
 											oColor = pColor * -1;
 											out.writeUTF("REMATCHACCEPT#" + oColor);
-											rboard = new ReversiBoard(length, height, numBlocked);
-											user = new Player(pName, rboard, pColor);
-											opponent = new Player(oName, rboard, oColor);
 											BorderPane newregion = createMultiplayerGameRegion(true);
-											Scene newscene = new Scene(newregion, windowWidth, windowHeight);
+											sendBoardInfo();
+											gameRegion = newregion;
+											Scene newscene = new Scene(gameRegion, windowWidth, windowHeight);
 											newscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 											pStage.setScene(newscene);
-											int[][] oldboard = rboard.getBoard();
-											updateBoard(oldboard);
+											user = new Player(pName, rboard, pColor);
+											opponent = new Player(oName, rboard, oColor);
 											if (pColor == 1)
 												disableAllButtons();
 										}
@@ -454,19 +528,18 @@ public class Main extends Application {
 						else if (keyword.equals("REMATCHACCEPT")) {
 							pColor = Integer.parseInt(received[1]);
 							oColor = pColor * -1;
-							rboard = new ReversiBoard(length, height, numBlocked);
-							user = new Player(pName, rboard, pColor);
-							opponent = new Player(oName, rboard, oColor);
+							BorderPane newregion = createMultiplayerGameRegion(true);
+							receiveBoardInfo();
 							Platform.runLater(new Runnable() {
 								public void run() {
-									BorderPane newregion = createMultiplayerGameRegion(true);
-									Scene newscene = new Scene(newregion, windowWidth, windowHeight);
+									gameRegion = newregion;
+									Scene newscene = new Scene(gameRegion, windowWidth, windowHeight);
 									newscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 									pStage.setScene(newscene);
-									int[][] oldboard = rboard.getBoard();
-									updateBoard(oldboard);
 									if (pColor == 1)
 										disableAllButtons();
+									user = new Player(pName, rboard, pColor);
+									opponent = new Player(oName, rboard, oColor);
 								}
 							});
 						}
@@ -522,7 +595,7 @@ public class Main extends Application {
 			public void handle(ActionEvent e) {
 				try {
 					connectText.setText("Looking for opponent...");
-					out.writeUTF("FINDOPPONENT");
+					out.writeUTF("FINDOPPONENT#" + userbounds[0] + "#" + userbounds[1] + "#" + userbounds[2] + "#" + userbounds[3]);
 					sideVBox.getChildren().add(cancelButton);
 				} catch (IOException e1) {
 					e1.printStackTrace();
@@ -533,48 +606,6 @@ public class Main extends Application {
 		connectButton.setOnAction(connectClicked);
 		if (playedBefore) {
 			connectButton.setDisable(true);
-		}
-
-		//sets sizes of row and column
-		for (int i = 0; i < 8; i++) {
-			int size = 50;
-			RowConstraints rc = new RowConstraints(size);
-			playboard.getRowConstraints().add(rc);
-			ColumnConstraints cc = new ColumnConstraints(size);
-			playboard.getColumnConstraints().add(cc);
-		}
-
-		//adds each button
-		for (int x = 0; x < 8; x++) {
-			for (int y = 0; y < 8; y++) {
-				GridButton button = new GridButton(x, y);
-				button.getStyleClass().add("gridsquare");
-				button.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-
-				EventHandler<ActionEvent> boardClicked = new EventHandler<ActionEvent>() {
-					public void handle(ActionEvent e)
-					{
-
-						int[][] oldboard = rboard.getBoard();
-
-						int[] selCoords = button.getcoord();
-						user.makeMove(selCoords[0], selCoords[1]);
-						try {
-							out.writeUTF("MOVE#" + selCoords[0] + "#" + selCoords[1]);
-						} catch (IOException e1) {
-							e1.printStackTrace();
-						}
-
-						tColor = oColor;
-						updateBoard(oldboard);
-						disableAllButtons();
-					}
-				};
-
-				button.setOnAction(boardClicked);
-				button.setDisable(true);
-				playboard.add(button, x, y);
-			}
 		}
 
 		//create back button
@@ -589,11 +620,7 @@ public class Main extends Application {
 					confirmation.getButtonTypes().setAll(yes, no);
 					Optional<ButtonType> result = confirmation.showAndWait();
 					if (result.get() == yes) {
-						out.writeUTF("EXIT");
-						listening = false;
-						in.close();
-						out.close();
-						socket.close();
+						disconnect();
 						pStage.setScene(mainscene);
 						animateMain();
 					}
@@ -619,13 +646,101 @@ public class Main extends Application {
 		return gameRegion;
 	}
 
+	public void generatePlayboard() {
+
+		playboard = new GridPane();
+		playboard.setId("playboard");
+
+		//sets sizes of row and column
+		int size = (int)Math.min(640/length, 640/height);
+		int maxDim = (int)Math.max(length, height);
+		for (int i = 0; i < maxDim; i++) {
+			ColumnConstraints cc = new ColumnConstraints(size);
+			playboard.getColumnConstraints().add(cc);
+			RowConstraints rc = new RowConstraints(size);
+			playboard.getRowConstraints().add(rc);
+		}
+
+		//adds each button
+		for (int x = 0; x < length; x++) {
+			for (int y = 0; y < height; y++) {
+				if (rboard.getSpace(x, y) != 2) {
+					GridButton button = new GridButton(x, y);
+					button.getStyleClass().add("gridsquare");
+					button.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+					EventHandler<ActionEvent> boardClicked = new EventHandler<ActionEvent>() {
+						public void handle(ActionEvent e)
+						{
+
+							int[][] oldboard = rboard.getBoard();
+
+							int[] selCoords = button.getcoord();
+							user.makeMove(selCoords[0], selCoords[1]);
+							try {
+								out.writeUTF("MOVE#" + selCoords[0] + "#" + selCoords[1]);
+							} catch (IOException e1) {
+								e1.printStackTrace();
+							}
+
+							tColor = oColor;
+							updateBoard(oldboard);
+							disableAllButtons();
+						}
+					};
+
+					button.setOnAction(boardClicked);
+					button.setDisable(true);
+					playboard.add(button, x, y);
+				}
+				else {
+					Rectangle rect = new Rectangle();
+					rect.setFill(Color.grayRgb(140));
+					rect.setStroke(Color.BLACK);
+					rect.setWidth(size);
+					rect.setHeight(size);
+					//rect.getStyleClass().add("smallborder");
+					playboard.add(rect, x, y);
+				}
+			}
+		}
+		int grayscale = 140;
+		if (length > height) {
+			for (int x = 0; x < length; x++) {
+				for (int y = height; y < length; y++) {
+					Rectangle rect = new Rectangle();
+					//rect.setFill(Color.grayRgb(grayscale));
+					rect.setFill(Color.TRANSPARENT);
+					rect.setWidth(size);
+					rect.setHeight(size);
+					playboard.add(rect, x, y);
+				}
+			}
+		}
+		else if (height > length) {
+			for (int x = length; x < height; x++) {
+				for (int y = 0; y < height; y++) {
+					Rectangle rect = new Rectangle();
+					//rect.setFill(Color.grayRgb(grayscale));
+					rect.setFill(Color.TRANSPARENT);
+					rect.setWidth(size);
+					rect.setHeight(size);
+					playboard.add(rect, x, y);
+				}
+			}
+		}
+
+	}
+
 	//disables all buttons, called when waiting for opponent's turn
 	public void disableAllButtons() {
 
-		for (int x = 0; x < 8; x++) {
-			for (int y = 0; y < 8; y++) {
-				GridButton button = (GridButton)playboard.getChildren().get(8 * x + y);
-				button.setDisable(true);
+		for (int x = 0; x < length; x++) {
+			for (int y = 0; y < height; y++) {
+				Node button = playboard.getChildren().get(height * x + y);
+				if (button instanceof GridButton) {
+					button.setDisable(true);
+				}
 			}
 		}
 
@@ -914,16 +1029,21 @@ public class Main extends Application {
 
 	}
 
+	public void disconnect() throws IOException {
+		listening = false;
+		out.writeUTF("EXIT");
+		in.close();
+		out.close();
+		socket.close();
+	}
+
 	public void init() {
 		System.out.println("Initiating Reversi Launcher 3000...");
 	}
 
 	public void stop() throws IOException {
 		if (socket != null) {
-			out.writeUTF("EXIT");
-			in.close();
-			out.close();
-			socket.close();
+			disconnect();
 		}
 		System.out.println("Shutting down.");
 	}

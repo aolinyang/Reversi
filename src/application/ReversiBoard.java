@@ -19,9 +19,9 @@ public class ReversiBoard {
 	 * The square at coordinate (x, y) is board[x][y]
 	 */
 	private int[][] board; //the board for the pieces. 0 = empty, 1 = white, -1 = black, 2 = blocked
-	private int numBlocked; //the number of blocked spaces
 	private int length;
 	private int height;
+	private ArrayList<Integer[]> allBlocked = new ArrayList<Integer[]>();
 
 	/*
 	 * COORDINATE SYSTEM FOR LEGAL BOARD:
@@ -39,10 +39,33 @@ public class ReversiBoard {
 	 * For the other 8 layers, the number will be the number of pieces that will be flipped, and 0 means illegal move.
 	 */
 	private int[][][] legalboard; //the board that keeps track of which moves are legal
-
 	private int numLegal; //number of legal spaces
+		
+	public ReversiBoard(int len, int hei, ArrayList<Integer[]> blockedSpaces) {
+		board = new int[len][hei];
+		length = len;
+		height = hei;
 
-	public ReversiBoard(int len, int hei, int n) {
+		//sets up standard Reversi opening
+		board[len/2 - 1][hei/2 - 1] = -1;
+		board[len/2 - 1][hei/2] = 1;
+		board[len/2][hei/2 - 1] = 1;
+		board[len/2][hei/2] = -1;
+
+		//sets up legalboard
+		legalboard = new int[len][hei][9];
+		numLegal = len * hei - blockedSpaces.size();
+		
+		for (int i = 0; i < blockedSpaces.size(); i++) {
+			int tX = blockedSpaces.get(i)[0];
+			int tY = blockedSpaces.get(i)[1];
+			board[tX][tY] = 2;
+		}
+		
+		allBlocked = blockedSpaces;
+	}
+
+	public ReversiBoard(int len, int hei, int numBlocked) {
 
 		board = new int[len][hei];
 		length = len;
@@ -56,14 +79,12 @@ public class ReversiBoard {
 
 		//sets up legalboard
 		legalboard = new int[len][hei][9];
-		numLegal = len * hei - n;
-
-		numBlocked = n;
+		numLegal = len * hei - numBlocked;
 
 		ArrayList<Integer> bCoords = new ArrayList<Integer>();
 		Random rand = new Random();
 		int counter = 0;
-		while (counter < n) {
+		while (counter < numBlocked) {
 			int tNum;
 			int tX;
 			int tY;
@@ -75,6 +96,8 @@ public class ReversiBoard {
 				   (tX >= len/2 - 2 && tX <= len/2 + 1 && tY >= hei/2 - 2 && tY <= hei/2 + 1));
 			bCoords.add(tNum);
 			board[tX][tY] = 2;
+			Integer[] thisspace = {tX, tY};
+			allBlocked.add(thisspace);
 			counter++;
 		}
 
@@ -105,6 +128,14 @@ public class ReversiBoard {
 			}
 			System.out.println();
 		}
+	}
+	
+	public int[][] getBlockedSpaces() {
+		int[][] blocked = new int[allBlocked.size()][2];
+		for (int i = 0; i < allBlocked.size(); i++)
+			for (int j = 0; j < 2; j++)
+				blocked[i][j] = allBlocked.get(i)[j];
+		return blocked;
 	}
 
 	//returns the number at (x, y)

@@ -57,6 +57,9 @@ class ClientHandler implements Runnable {
 	private boolean isSearching;
 	private ClientHandler self = this;
 
+	private int[] bounds = new int[4];
+	//min length, max length, min height, max height
+
 	// constructor 
 	public ClientHandler(Socket s, String name, 
 			DataInputStream dis, DataOutputStream dos) { 
@@ -73,11 +76,20 @@ class ClientHandler implements Runnable {
 		public void run() {
 			isSearching = true;
 			int index = 0;
+			int[] oppobounds = null;
 			while (!Thread.interrupted() && opponent == null) {
 				ClientHandler ch = Server.clients.get(index);
 				if (ch.isSearching && ch != self) {
 					opponent = ch;
-					odos = opponent.getDOS();
+					oppobounds = opponent.getBounds();
+					if (bounds[1] < oppobounds[0] ||
+							bounds[0] > oppobounds[1] ||
+							bounds[3] < oppobounds[2] ||
+							bounds[2] > oppobounds[3]) {
+						opponent = null;
+					}
+					else 
+						odos = opponent.getDOS();
 				}
 				index++;
 				if (index >= Server.clients.size())
@@ -85,7 +97,7 @@ class ClientHandler implements Runnable {
 			}
 			try {
 				if (opponent != null) {
-					out.writeUTF("FOUNDOPPONENT#" + opponent.getName());
+					out.writeUTF("FOUNDOPPONENT#" + opponent.getName() + "#" + oppobounds[0] + "#" + oppobounds[1] + "#" + oppobounds[2] + "#" + oppobounds[3]);
 				}
 				Thread.sleep(10);
 				isSearching = false;
@@ -116,6 +128,8 @@ class ClientHandler implements Runnable {
 					name = received[1];
 				}
 				else if (keyword.equals("FINDOPPONENT")) {
+					for (int i = 0; i < 4; i++)
+						bounds[i] = Integer.parseInt(received[i+1]);
 					finder = new OpponentFinder();
 					finder.start();
 				}
@@ -132,9 +146,10 @@ class ClientHandler implements Runnable {
 					odos = null;
 				}
 				else if (keyword.equals("MOVE") || 
-						 keyword.equals("PASS") || 
-						 keyword.equals("REMATCHREQUEST") ||
-						 keyword.equals("REMATCHACCEPT"))
+						keyword.equals("PASS") || 
+						keyword.equals("REMATCHREQUEST") ||
+						keyword.equals("REMATCHACCEPT") ||
+						keyword.equals("FINALDIMENSIONS"))
 					odos.writeUTF(origMessage);
 				else if (keyword.equals("REMATCHDECLINE")) {
 					odos.writeUTF(origMessage);
@@ -185,8 +200,10 @@ class ClientHandler implements Runnable {
 	}
 
 	public boolean isSearching() {
-
 		return isSearching;
+	}
 
+	public int[] getBounds() {
+		return bounds;
 	}
 }

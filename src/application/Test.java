@@ -5,21 +5,13 @@ import java.util.*;
 public class Test {
 	
 	public static ArrayList<Obj> list = null;
+	public static int length = 5;
+	public static int[] li = new int[10];
 
 	public static void main(String[] args) {
 		
-		list = new ArrayList<Obj>();
-		
-		Obj one = new Obj(1);
-		Obj two = new Obj(2);
-		Obj three = new Obj(3);
-		list.add(one);
-		list.add(two);
-		list.add(three);
-		
-		one.exit();
-		System.out.println(list.size());
-		System.out.println(list.get(0).num);
+		System.out.println(length);
+		System.out.println(li.length);
 		
 	}
 	
