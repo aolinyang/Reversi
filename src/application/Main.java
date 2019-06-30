@@ -48,9 +48,9 @@ public class Main extends Application {
 
 	//special modifications
 	private int numBlocked = 15;
-	private int length = 4;
-	private int height = 10;
-	private int[] userbounds = {4, 6, 4, 6}; //min length, max length, min height, max height
+	private int length = 12;
+	private int height = 12;
+	private int[] userbounds = {6, 14, 6, 14}; //min length, max length, min height, max height
 	private int[] bounds = new int[4]; //combined bounds of opponent and user
 
 	private Socket socket = null;
