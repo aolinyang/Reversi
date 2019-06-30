@@ -3,7 +3,7 @@
 }
 
 #mainvbox {
-	-fx-background-image: url('background.jpg');
+	-fx-background-image: url('Background.png');
     -fx-background-repeat: stretch;
     -fx-background-size: cover;
     -fx-background-position: center center;
@@ -13,7 +13,7 @@
 
 #titletext {
     -fx-font-family: 'Exo 2';
-    -fx-font-size: 200px;
+    -fx-font-size: 240px;
     -fx-fill: linear-gradient(from 0% 0% to 100% 200%, repeat, black 30%, white 65%);
     -fx-background-color: red;
     -fx-stroke-width: 1;
@@ -21,7 +21,7 @@
 }
 
 .mainbutton {
-	-fx-padding: 20 260;
+	-fx-padding: 20 280;
 	-fx-font-size: 40;
 	-fx-focus-color: transparent;
 	-fx-faint-focus-color: transparent;
@@ -29,7 +29,7 @@
 }
 
 .mainbutton2 {
-	-fx-padding: 20 230;
+	-fx-padding: 20 250;
 	-fx-font-size: 40;
 	-fx-focus-color: transparent;
 	-fx-faint-focus-color: transparent;

@@ -130,9 +130,12 @@ public class Main extends Application {
 		multiPlayerButton.getStyleClass().add("mainbutton");
 		quitButton = new Button("Quit Game");
 		quitButton.getStyleClass().add("mainbutton");
+		Rectangle empty = new Rectangle();
+		empty.setHeight(170);
 		main.getChildren().add(singlePlayerButton);
 		main.getChildren().add(multiPlayerButton);
 		main.getChildren().add(quitButton);
+		main.getChildren().add(empty);
 
 		animateMain();
 
@@ -704,13 +707,12 @@ public class Main extends Application {
 				}
 			}
 		}
-		int grayscale = 140;
 		if (length > height) {
 			for (int x = 0; x < length; x++) {
 				for (int y = height; y < length; y++) {
 					Rectangle rect = new Rectangle();
-					//rect.setFill(Color.grayRgb(grayscale));
-					rect.setFill(Color.TRANSPARENT);
+					rect.setFill(Color.rgb(50, 112, 20, 0.5));
+					rect.setStroke(Color.BLACK);
 					rect.setWidth(size);
 					rect.setHeight(size);
 					playboard.add(rect, x, y);
@@ -721,8 +723,8 @@ public class Main extends Application {
 			for (int x = length; x < height; x++) {
 				for (int y = 0; y < height; y++) {
 					Rectangle rect = new Rectangle();
-					//rect.setFill(Color.grayRgb(grayscale));
-					rect.setFill(Color.TRANSPARENT);
+					rect.setFill(Color.rgb(50, 112, 20, 0.5));
+					rect.setStroke(Color.BLACK);
 					rect.setWidth(size);
 					rect.setHeight(size);
 					playboard.add(rect, x, y);
@@ -858,13 +860,12 @@ public class Main extends Application {
 				}
 			}
 		}
-		int grayscale = 140;
 		if (length > height) {
 			for (int x = 0; x < length; x++) {
 				for (int y = height; y < length; y++) {
 					Rectangle rect = new Rectangle();
-					//rect.setFill(Color.grayRgb(grayscale));
-					rect.setFill(Color.TRANSPARENT);
+					rect.setFill(Color.rgb(50, 112, 20, 0.5));
+					rect.setStroke(Color.BLACK);
 					rect.setWidth(size);
 					rect.setHeight(size);
 					playboard.add(rect, x, y);
@@ -875,8 +876,8 @@ public class Main extends Application {
 			for (int x = length; x < height; x++) {
 				for (int y = 0; y < height; y++) {
 					Rectangle rect = new Rectangle();
-					//rect.setFill(Color.grayRgb(grayscale));
-					rect.setFill(Color.TRANSPARENT);
+					rect.setFill(Color.rgb(50, 112, 20, 0.5));
+					rect.setStroke(Color.BLACK);
 					rect.setWidth(size);
 					rect.setHeight(size);
 					playboard.add(rect, x, y);
