@@ -1,5 +1,6 @@
 @font-face {
     src: url('Exo2-Bold.ttf');
+    src: url('BAUHS93.TTF');
 }
 
 #mainvbox {
@@ -8,41 +9,68 @@
     -fx-background-size: cover;
     -fx-background-position: center center;
    	-fx-alignment: center;
-   	-fx-spacing: 30px;
+   	/*-fx-spacing: 30px;*/
 }
 
 #titletext {
     -fx-font-family: 'Exo 2';
     -fx-font-size: 240px;
-    -fx-fill: linear-gradient(from 0% 0% to 100% 200%, repeat, black 30%, white 65%);
-    -fx-background-color: red;
-    -fx-stroke-width: 1;
-    
+    /*-fx-fill: linear-gradient(from 0% 0% to 100% 200%, repeat, black 30%, white 65%);*/
+    -fx-fill: linear-gradient(from 0% 0% to 100% 0%, black 48%, white 48%);
+}
+
+#subtitle {
+	-fx-font-family: 'Bauhaus 93';
+    -fx-font-size: 50px;
+    -fx-fill: linear-gradient(from 0% 0% to 100% 0%, white 48%, black 48%);
 }
 
 .mainbutton {
-	-fx-padding: 20 280;
 	-fx-font-size: 40;
+	-fx-background-radius: 50;
 	-fx-focus-color: transparent;
 	-fx-faint-focus-color: transparent;
-	-fx-background-radius: 50;
 }
 
-.mainbutton2 {
+#spbutton {
 	-fx-padding: 20 250;
-	-fx-font-size: 40;
-	-fx-focus-color: transparent;
-	-fx-faint-focus-color: transparent;
-	-fx-background-radius: 50;
 }
+
+#mpbutton {
+	-fx-padding: 20 281;
+}
+
+#instrubutton {
+	-fx-padding: 20 275;
+}
+
+#halfbuttons {
+	-fx-alignment: center;
+	-fx-spacing: 30px;
+}
+
+#halfbuttonquit {
+	-fx-padding: 20 90;
+}
+
+#halfbuttonsettings {
+	-fx-padding: 20 110;
+}
+
+
+
+#settingsregion {
+	
+}
+
+
 
 .smallborder {
 	-fx-border-color: black;
 }
 
 .gridsquare {
-	-fx-background-image: url('emptysquare.png');
-  	-fx-background-repeat: no-repeat;
+	-fx-background-repeat: no-repeat;
   	-fx-background-position: center;
   	-fx-border-color: black;
 	-fx-focus-color: transparent;
@@ -50,71 +78,46 @@
 	-fx-background-size: cover;
 }
 
+.emptysquare {
+	-fx-background-image: url('emptysquare.png');
+}
+
 .blacksquare {
 	-fx-background-image: url('blackpiece.png');
-  	-fx-background-repeat: no-repeat;
-  	-fx-background-position: center;
-  	-fx-background-size: cover;
-  	-fx-border-color: black;
 }
 
 .bsrecentself {
 	-fx-background-image: url('bprecentself.png');
-  	-fx-background-repeat: no-repeat;
-  	-fx-background-position: center;
-  	-fx-background-size: cover;
-	-fx-border-color: black;
 }
 
 .bsrecentoppo {
 	-fx-background-image: url('bprecentoppo.png');
-  	-fx-background-repeat: no-repeat;
-  	-fx-background-position: center;
-  	-fx-background-size: cover;
-  	-fx-border-color: black;
 }
 
 .whitesquare {
 	-fx-background-image: url('whitepiece.png');
-  	-fx-background-repeat: no-repeat;
-  	-fx-background-position: center;
-  	-fx-background-size: cover;
-  	-fx-border-color: black;
 }
 
 .wsrecentself {
 	-fx-background-image: url('wprecentself.png');
-  	-fx-background-repeat: no-repeat;
-  	-fx-background-position: center;
-  	-fx-background-size: cover;
-  	-fx-border-color: black;
 }
 
 .wsrecentoppo {
 	-fx-background-image: url('wprecentoppo.png');
-  	-fx-background-repeat: no-repeat;
-  	-fx-background-position: center;
-  	-fx-background-size: cover;
-  	-fx-border-color: black;
 }
 
 .blockedsquare {
 	-fx-background-image: url('stone.png');
-  	-fx-background-repeat: no-repeat;
-  	-fx-background-position: center;
-  	-fx-background-size: cover;
-  	-fx-border-color: black;
 }
 
 #playboard {
-	-fx-alignment: center;
-	
+	-fx-alignment: center;	
 }
 
-#playregionhead {
+/*#playregionhead {
 	
 }
 
 #playregion {
 	
-}
+}*/

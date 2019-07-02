@@ -4,27 +4,21 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 import javafx.animation.*;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.scene.*;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.TextInputDialog;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.RowConstraints;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
@@ -47,9 +41,9 @@ public class Main extends Application {
 	private int tColor = 0; //color of entity taking this turn
 
 	//special modifications
-	private int numBlocked = 15;
-	private int length = 12;
-	private int height = 12;
+	private int numBlocked = 0;
+	private int length = 8;
+	private int height = 8;
 	private int[] userbounds = {6, 14, 6, 14}; //min length, max length, min height, max height
 	private int[] bounds = new int[4]; //combined bounds of opponent and user
 
@@ -57,20 +51,26 @@ public class Main extends Application {
 	private DataInputStream in = null;
 	private DataOutputStream out = null;
 
+	private Stage pStage = null;
+
 	private Scene mainscene = null;
 	private Text title = null;
+	private Text subtitle = null;
 	private Button singlePlayerButton = null;
 	private Button multiPlayerButton = null;
+	private Button instruButton = null;
 	private Button quitButton = null;
-	private Stage pStage = null;
+	private Button settingsButton = null;
+
+	private Scene settingsScene = null;
+	private VBox settingsRegion = null;
+
 	private BorderPane gameRegion = null;
 	private GridPane playboard = null;
 	private Text winAnnounce = new Text();
 	private Button rematchButton = new Button();
 	private Button connectButton = new Button();
 	private VBox sideVBox = new VBox();
-
-	private boolean listening; //for the master listener thread
 
 	@Override
 	public void start(Stage primaryStage) {
@@ -97,9 +97,10 @@ public class Main extends Application {
 
 	public void animateMain() {
 
-		Node[] mainNodes = {title, singlePlayerButton, multiPlayerButton, quitButton};
+		Node[] mainNodes = {title, subtitle, singlePlayerButton, multiPlayerButton, instruButton, quitButton, settingsButton};
 
 		for (Node n : mainNodes) {
+			n.getStyleClass().add("mainbutton");
 			FadeTransition fade = new FadeTransition(Duration.millis(2500), n);
 			fade.setFromValue(0);
 			fade.setToValue(1);
@@ -112,29 +113,46 @@ public class Main extends Application {
 	public VBox setMainScreen(Stage primaryStage) {
 
 		//creates the actual vbox
-		VBox main = new VBox();
-		main.setSpacing(30);
+		VBox main = new VBox(30);
+		//	main.setSpacing(30);
 		main.setId("mainvbox");
 
 		//adds title
 		title = new Text("REVERSI");
 		title.setId("titletext");
 		main.getChildren().add(title);
+		VBox.setMargin(title, new Insets(0,0,-60,0));
+
+		subtitle = new Text("o       b       l       i       q       u       e");
+		subtitle.setId("subtitle");
+		main.getChildren().add(subtitle);
+		VBox.setMargin(subtitle, new Insets(0,0,40,0));
 
 		//adds buttons
 		//There are 2 mainbutton CSS classes - this deals with a bug where the top button is
 		//a little wider than the others
 		singlePlayerButton = new Button("Play Computer");
-		singlePlayerButton.getStyleClass().add("mainbutton2");
+		singlePlayerButton.setId("spbutton");
 		multiPlayerButton = new Button("Play Online");
-		multiPlayerButton.getStyleClass().add("mainbutton");
+		multiPlayerButton.setId("mpbutton");
+		instruButton = new Button("How to Play");
+		instruButton.setId("instrubutton");
 		quitButton = new Button("Quit Game");
-		quitButton.getStyleClass().add("mainbutton");
+		quitButton.setId("halfbuttonquit");
+		settingsButton = new Button("Settings");
+		settingsButton.setId("halfbuttonsettings");
+
 		Rectangle empty = new Rectangle();
-		empty.setHeight(170);
+		empty.setHeight(80);
+
+		HBox hb = new HBox();
+		hb.getChildren().add(quitButton);
+		hb.getChildren().add(settingsButton);
+		hb.setId("halfbuttons");
 		main.getChildren().add(singlePlayerButton);
 		main.getChildren().add(multiPlayerButton);
-		main.getChildren().add(quitButton);
+		main.getChildren().add(instruButton);
+		main.getChildren().add(hb);
 		main.getChildren().add(empty);
 
 		animateMain();
@@ -216,16 +234,12 @@ public class Main extends Application {
 				{
 					@Override
 					public void run() {
-						try {
-							boolean connected = connect(ip);
-							if (connected) {
-								BorderPane gameRegion = createMultiplayerGameRegion(false);
-								Scene gameScene = new Scene(gameRegion, windowWidth, windowHeight);
-								gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
-								pStage.setScene(gameScene);
-							}
-						} catch (ClassNotFoundException | IOException e) {
-							e.printStackTrace();
+						boolean connected = connect(ip);
+						if (connected) {
+							BorderPane gameRegion = createMultiplayerGameRegion(false);
+							Scene gameScene = new Scene(gameRegion, windowWidth, windowHeight);
+							gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+							pStage.setScene(gameScene);
 						}
 					}
 				});
@@ -233,8 +247,18 @@ public class Main extends Application {
 			} 
 		};
 
+		//when settings is clicked
+		EventHandler<ActionEvent> settingsClicked = new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent e)
+			{
+				createSettingsRegion();
+				settingsScene = new Scene(settingsRegion, windowWidth, windowHeight);
+				pStage.setScene(settingsScene);
+			}
+		};
+
 		//when quit is clicked
-		EventHandler<ActionEvent> QuitClicked = new EventHandler<ActionEvent>() {
+		EventHandler<ActionEvent> quitClicked = new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent e)
 			{
 				Platform.exit();
@@ -243,22 +267,125 @@ public class Main extends Application {
 
 		singlePlayerButton.setOnAction(SPClicked);
 		multiPlayerButton.setOnAction(MPClicked);
-		quitButton.setOnAction(QuitClicked);
+		quitButton.setOnAction(quitClicked);
+		settingsButton.setOnAction(settingsClicked);
 
 		return main;
 
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public void createSettingsRegion() {
+
+		settingsRegion = new VBox();
+		settingsRegion.setId("settingsregion");
+		
+		Button backButton = new Button("Back to main menu");
+
+		Text chooseDims = new Text("Customize single player board");
+
+		HBox spCustom = new HBox();
+
+		Text lengthText = new Text("Length:");
+		Text heightText = new Text("Width:");
+		Text blockedText = new Text("Number of squares blocked:");
+
+		ChoiceBox lengthChoice = new ChoiceBox(FXCollections.observableArrayList(
+				"4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")
+				);
+		ChoiceBox heightChoice = new ChoiceBox(FXCollections.observableArrayList(
+				"4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")
+				);
+		lengthChoice.setValue(length + "");
+		heightChoice.setValue(height + "");
+
+		Slider blockedSlider = new Slider();
+		blockedSlider.setMin(0);
+		blockedSlider.setMax((int)Math.sqrt((length+1)*(height+1)));
+		blockedSlider.setValue(0);
+		blockedSlider.setShowTickLabels(true);
+		blockedSlider.setShowTickMarks(true);
+		blockedSlider.setMajorTickUnit(1);
+		blockedSlider.setMinorTickCount(0);
+		blockedSlider.setSnapToTicks(true);
+		blockedSlider.setMinWidth(500);
+		blockedSlider.setMaxWidth(700);
+		
+		EventHandler<ActionEvent> backClicked = new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent e) {
+				pStage.setScene(mainscene);
+			}
+		};
+		backButton.setOnAction(backClicked);
+
+		lengthChoice.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
+			public void changed(ObservableValue observed, Number oldnum, Number newnum) {
+				length = (int)(newnum) + 4;
+				int max = (int)Math.sqrt((length+1)*(height+1));
+				blockedSlider.setMax(max);
+				if (numBlocked >= max) {
+					blockedSlider.setValue(max);
+					numBlocked = max;
+				}
+			}
+		});
+		heightChoice.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
+			public void changed(ObservableValue observed, Number oldnum, Number newnum) {
+				height = (int)(newnum) + 4;
+				int max = (int)Math.sqrt((length+1)*(height+1));
+				blockedSlider.setMax(max);
+				if (numBlocked >= max) {
+					blockedSlider.setValue(max);
+					numBlocked = max;
+				}
+			}
+		});
+		blockedSlider.valueProperty().addListener(new ChangeListener<Number>() {
+			public void changed(ObservableValue ov, Number oldnum, Number newnum) {
+				numBlocked = (int)(double)newnum;
+			}
+		});	
+
+		chooseDims.getStyleClass().add("settingstext");
+		lengthText.getStyleClass().add("settingstext");
+		heightText.getStyleClass().add("settingstext");
+		chooseDims.getStyleClass().add("settingstextmajor");
+		lengthText.getStyleClass().add("settingstextminor");
+		heightText.getStyleClass().add("settingstextminor");
+
+		spCustom.getChildren().add(lengthText);
+		spCustom.getChildren().add(lengthChoice);
+		spCustom.getChildren().add(heightText);
+		spCustom.getChildren().add(heightChoice);
+		spCustom.getChildren().add(blockedText);
+		spCustom.getChildren().add(blockedSlider);
+
+		settingsRegion.getChildren().add(backButton);
+		settingsRegion.getChildren().add(chooseDims);
+		settingsRegion.getChildren().add(spCustom);
+
+	}
+
 	//attempts to connect to the server with ip
-	public boolean connect(String ip) throws IOException, ClassNotFoundException {
+	public boolean connect(String ip) {
 
-		socket = new Socket(ip, 5337);
+		try {
+			socket = new Socket(ip, 5337);
 
-		out = new DataOutputStream(socket.getOutputStream());
-		in = new DataInputStream(socket.getInputStream());
+			out = new DataOutputStream(socket.getOutputStream());
+			in = new DataInputStream(socket.getInputStream());
 
-		out.writeUTF("USERNAME#" + pName);
-		out.flush();
+			out.writeUTF("USERNAME#" + pName);
+			out.flush();
+		} catch (IOException e) {
+			Alert error = new Alert(AlertType.ERROR);
+			error.setTitle("Error");
+			error.setHeaderText("Failed to connect to game room");
+			error.setContentText("1. Check your internet connection.\n"
+					+ "2. Make sure you typed in the correct IP address.");
+			error.showAndWait();
+			return false;
+		}
 
 		return true;
 
@@ -281,7 +408,7 @@ public class Main extends Application {
 			}
 			out.writeUTF("FINALDIMENSIONS#" + length + "#" + height + bmsg);
 
-			generatePlayboard();
+			generatePlayboard("ONLINE");
 
 			Platform.runLater(new Runnable() {
 				public void run() {
@@ -318,7 +445,7 @@ public class Main extends Application {
 			}
 			rboard = new ReversiBoard(length, height, allBlocked);
 
-			generatePlayboard();
+			generatePlayboard("ONLINE");
 
 			Platform.runLater(new Runnable() {
 				public void run() {
@@ -368,7 +495,7 @@ public class Main extends Application {
 
 			public void run() {
 				try {
-					while (listening) {
+					while (socket.isConnected()) {
 						String[] received = in.readUTF().split("#");
 						String keyword = received[0];
 						if (keyword.equals("MOVE")) {
@@ -571,8 +698,6 @@ public class Main extends Application {
 			}
 
 		}
-		listening = true;
-
 		if (!playedBefore) {
 			Listener listener = new Listener();
 			listener.start();
@@ -649,7 +774,7 @@ public class Main extends Application {
 		return gameRegion;
 	}
 
-	public void generatePlayboard() {
+	public void generatePlayboard(String context) {
 
 		playboard = new GridPane();
 		playboard.setId("playboard");
@@ -670,30 +795,76 @@ public class Main extends Application {
 				if (rboard.getSpace(x, y) != 2) {
 					GridButton button = new GridButton(x, y);
 					button.getStyleClass().add("gridsquare");
+					button.getStyleClass().add("emptysquare");
 					button.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+					EventHandler<ActionEvent> boardClicked = null;
 
-					EventHandler<ActionEvent> boardClicked = new EventHandler<ActionEvent>() {
-						public void handle(ActionEvent e)
-						{
+					if (context.equals("ONLINE")) {
+						boardClicked = new EventHandler<ActionEvent>() {
+							public void handle(ActionEvent e)
+							{
 
-							int[][] oldboard = rboard.getBoard();
+								int[][] oldboard = rboard.getBoard();
 
-							int[] selCoords = button.getcoord();
-							user.makeMove(selCoords[0], selCoords[1]);
-							try {
-								out.writeUTF("MOVE#" + selCoords[0] + "#" + selCoords[1]);
-							} catch (IOException e1) {
-								e1.printStackTrace();
+								int[] selCoords = button.getcoord();
+								user.makeMove(selCoords[0], selCoords[1]);
+								try {
+									out.writeUTF("MOVE#" + selCoords[0] + "#" + selCoords[1]);
+								} catch (IOException e1) {
+									e1.printStackTrace();
+								}
+
+								tColor = oColor;
+								updateBoard(oldboard);
+								disableAllButtons();
 							}
+						};
+						button.setDisable(true);
+					}
+					else if (context.equals("COMPUTER")) {
+						boardClicked = new EventHandler<ActionEvent>() {
+							public void handle(ActionEvent e)
+							{
+								int[][] oldboard = rboard.getBoard();
+								boolean canComputerPlay;
 
-							tColor = oColor;
-							updateBoard(oldboard);
-							disableAllButtons();
-						}
-					};
+								int[] selCoords = button.getcoord();
+								user.makeMove(selCoords[0], selCoords[1]);
+
+								tColor = oColor;
+								canComputerPlay = updateBoard(oldboard);
+
+								if (canComputerPlay) {
+									boolean canUserPlay;
+									while (true) {
+										oldboard = rboard.getBoard();
+										comp.makeMove();
+										tColor = pColor;
+										canUserPlay = updateBoard(oldboard);
+										if (canUserPlay)
+											break;
+										oldboard = rboard.getBoard();
+										tColor = oColor;
+										canComputerPlay = updateBoard(oldboard);
+										if (!canComputerPlay) {
+											endGameSP();
+											break;
+										}
+									}
+								}
+								else {
+									tColor = pColor;
+									oldboard = rboard.getBoard();
+									boolean canUserPlay = updateBoard(oldboard);
+									if (!canUserPlay)
+										endGameSP();
+								}
+
+							}
+						};
+					}
 
 					button.setOnAction(boardClicked);
-					button.setDisable(true);
 					playboard.add(button, x, y);
 				}
 				else {
@@ -773,7 +944,6 @@ public class Main extends Application {
 				confirmation.getButtonTypes().setAll(yes, no);
 				Optional<ButtonType> result = confirmation.showAndWait();
 				if (result.get() == yes) {
-					listening = false;
 					pStage.setScene(mainscene);
 					animateMain();
 				}
@@ -785,105 +955,7 @@ public class Main extends Application {
 		playboard = new GridPane();
 		playboard.setId("playboard");
 
-		//sets sizes of row and column
-		int size = (int)Math.min(640/length, 640/height);
-		int maxDim = (int)Math.max(length, height);
-		for (int i = 0; i < maxDim; i++) {
-			ColumnConstraints cc = new ColumnConstraints(size);
-			playboard.getColumnConstraints().add(cc);
-			RowConstraints rc = new RowConstraints(size);
-			playboard.getRowConstraints().add(rc);
-		}
-
-		//adds each button
-		for (int x = 0; x < length; x++) {
-			for (int y = 0; y < height; y++) {
-				if (rboard.getSpace(x, y) != 2) {
-					GridButton button = new GridButton(x, y);
-					button.getStyleClass().add("gridsquare");
-					//Image img = new Image(getClass().getResourceAsStream("emptysquare.png"));
-					//button.setGraphic(new ImageView(img));
-					button.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-
-					EventHandler<ActionEvent> boardClicked = new EventHandler<ActionEvent>() {
-						public void handle(ActionEvent e)
-						{
-							int[][] oldboard = rboard.getBoard();
-							boolean canComputerPlay;
-
-							int[] selCoords = button.getcoord();
-							user.makeMove(selCoords[0], selCoords[1]);
-
-							tColor = oColor;
-							canComputerPlay = updateBoard(oldboard);
-
-							if (canComputerPlay) {
-								boolean canUserPlay;
-								while (true) {
-									oldboard = rboard.getBoard();
-									comp.makeMove();
-									tColor = pColor;
-									canUserPlay = updateBoard(oldboard);
-									if (canUserPlay)
-										break;
-									oldboard = rboard.getBoard();
-									tColor = oColor;
-									canComputerPlay = updateBoard(oldboard);
-									if (!canComputerPlay) {
-										endGameSP();
-										break;
-									}
-								}
-							}
-							else {
-								tColor = pColor;
-								oldboard = rboard.getBoard();
-								boolean canUserPlay = updateBoard(oldboard);
-								if (!canUserPlay)
-									endGameSP();
-							}
-
-						}
-					};
-
-					button.setOnAction(boardClicked);
-					playboard.add(button, x, y);
-				}
-				else {
-					Rectangle rect = new Rectangle();
-					rect.setFill(Color.grayRgb(140));
-					rect.setStroke(Color.BLACK);
-					rect.setWidth(size);
-					rect.setHeight(size);
-					//rect.getStyleClass().add("smallborder");
-					playboard.add(rect, x, y);
-				}
-			}
-		}
-		if (length > height) {
-			for (int x = 0; x < length; x++) {
-				for (int y = height; y < length; y++) {
-					Rectangle rect = new Rectangle();
-					rect.setFill(Color.rgb(50, 112, 20, 0.5));
-					rect.setStroke(Color.BLACK);
-					rect.setWidth(size);
-					rect.setHeight(size);
-					playboard.add(rect, x, y);
-				}
-			}
-		}
-		else if (height > length) {
-			for (int x = length; x < height; x++) {
-				for (int y = 0; y < height; y++) {
-					Rectangle rect = new Rectangle();
-					rect.setFill(Color.rgb(50, 112, 20, 0.5));
-					rect.setStroke(Color.BLACK);
-					rect.setWidth(size);
-					rect.setHeight(size);
-					playboard.add(rect, x, y);
-				}
-			}
-		}
+		generatePlayboard("COMPUTER");
 
 		int[][] oldboard = rboard.getBoard();
 		updateBoard(oldboard);
@@ -916,9 +988,10 @@ public class Main extends Application {
 			for (int y = 0; y < height; y++) {
 				Node button = playboard.getChildren().get(height * x + y);
 				if (button instanceof GridButton) {
+					button.getStyleClass().clear();
+					button.setStyle("null");
+					button.getStyleClass().add("gridsquare");
 					if (rboard.getSpace(x, y) == 1) {
-						button.getStyleClass().clear();
-						button.setStyle("null");
 						if (newboard[x][y] != oldboard[x][y]) {
 							if (pColor == 1)
 								button.getStyleClass().add("wsrecentself");
@@ -930,8 +1003,6 @@ public class Main extends Application {
 						}
 					}
 					else if (rboard.getSpace(x, y) == -1) {
-						button.getStyleClass().clear();
-						button.setStyle("null");
 						if (newboard[x][y] != oldboard[x][y]) {
 							if (pColor == -1)
 								button.getStyleClass().add("bsrecentself");
@@ -943,9 +1014,7 @@ public class Main extends Application {
 						}
 					}
 					else if (rboard.getSpace(x, y) == 0) {
-						button.getStyleClass().clear();
-						button.setStyle("null");
-						button.getStyleClass().add("gridsquare");
+						button.getStyleClass().add("emptysquare");
 					}
 
 					if (legalboard[x][y][0] == 0)
@@ -1031,7 +1100,6 @@ public class Main extends Application {
 	}
 
 	public void disconnect() throws IOException {
-		listening = false;
 		out.writeUTF("EXIT");
 		in.close();
 		out.close();
@@ -1043,7 +1111,7 @@ public class Main extends Application {
 	}
 
 	public void stop() throws IOException {
-		if (socket != null) {
+		if (socket != null && !socket.isClosed()) {
 			disconnect();
 		}
 		System.out.println("Shutting down.");
