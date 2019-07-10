@@ -44,8 +44,10 @@ public class Main extends Application {
 	private int numBlocked = 0;
 	private int length = 8;
 	private int height = 8;
-	private int[] userbounds = {6, 14, 6, 14}; //min length, max length, min height, max height
+	private int[] userbounds = {4, 20, 4, 20}; //min length, max length, min height, max height
 	private int[] bounds = new int[4]; //combined bounds of opponent and user
+	private boolean sbOnly = false; //square boards only
+	private boolean noBlocked = false; //no blocked squares
 
 	private Socket socket = null;
 	private DataInputStream in = null;
@@ -279,16 +281,14 @@ public class Main extends Application {
 
 		settingsRegion = new VBox();
 		settingsRegion.setId("settingsregion");
-		
+
 		Button backButton = new Button("Back to main menu");
 
 		Text chooseDims = new Text("Customize single player board");
-
 		HBox spCustom = new HBox();
-
-		Text lengthText = new Text("Length:");
-		Text heightText = new Text("Width:");
-		Text blockedText = new Text("Number of squares blocked:");
+		Label lengthText = new Label("Length:");
+		Label heightText = new Label("Width:");
+		Label blockedText = new Label("Number of squares blocked:");
 
 		ChoiceBox lengthChoice = new ChoiceBox(FXCollections.observableArrayList(
 				"4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")
@@ -302,7 +302,7 @@ public class Main extends Application {
 		Slider blockedSlider = new Slider();
 		blockedSlider.setMin(0);
 		blockedSlider.setMax((int)Math.sqrt((length+1)*(height+1)));
-		blockedSlider.setValue(0);
+		blockedSlider.setValue(numBlocked);
 		blockedSlider.setShowTickLabels(true);
 		blockedSlider.setShowTickMarks(true);
 		blockedSlider.setMajorTickUnit(1);
@@ -310,7 +310,38 @@ public class Main extends Application {
 		blockedSlider.setSnapToTicks(true);
 		blockedSlider.setMinWidth(500);
 		blockedSlider.setMaxWidth(700);
-		
+
+		Text mpsettings = new Text("Multiplayer settings");
+		HBox mpCustom1 = new HBox();
+		HBox mpCustom2 = new HBox();
+		HBox mpCustom3 = new HBox();
+		Label minLengthLabel = new Label("Minimum board length:");
+		Label maxLengthLabel = new Label("Maximum board length:");
+		Label minHeightLabel = new Label("Minimum board height:");
+		Label maxHeightLabel = new Label("Maximum board height:");
+
+		CheckBox squareCb = new CheckBox("Square boards only");
+		squareCb.setSelected(sbOnly);
+		CheckBox blockedCb = new CheckBox("No blocked squares");
+		blockedCb.setSelected(noBlocked);
+
+		ChoiceBox minLengthChoice = new ChoiceBox(FXCollections.observableArrayList(
+				"4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")
+				);
+		minLengthChoice.setValue(userbounds[0] + "");
+		ChoiceBox maxLengthChoice = new ChoiceBox(FXCollections.observableArrayList(
+				"4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")
+				);
+		maxLengthChoice.setValue(userbounds[1] + "");
+		ChoiceBox minHeightChoice = new ChoiceBox(FXCollections.observableArrayList(
+				"4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")
+				);
+		minHeightChoice.setValue(userbounds[2] + "");
+		ChoiceBox maxHeightChoice = new ChoiceBox(FXCollections.observableArrayList(
+				"4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")
+				);
+		maxHeightChoice.setValue(userbounds[3] + "");
+
 		EventHandler<ActionEvent> backClicked = new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent e) {
 				pStage.setScene(mainscene);
@@ -346,6 +377,71 @@ public class Main extends Application {
 			}
 		});	
 
+		squareCb.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			public void changed(ObservableValue ov, Boolean oldval, Boolean newval) {
+				sbOnly = newval;
+				if (newval) {
+					minHeightChoice.setValue(minLengthChoice.getValue());
+					maxHeightChoice.setValue(maxLengthChoice.getValue());
+				}
+			}
+		});
+		blockedCb.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			public void changed(ObservableValue ov, Boolean oldval, Boolean newval) {
+				noBlocked = newval;
+			}
+		});
+
+		minLengthChoice.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
+			public void changed(ObservableValue observed, Number oldnum, Number newnum) {
+				userbounds[0] = (int)(newnum) + 4;
+				if (userbounds[0] > userbounds[1]) {
+					userbounds[1] = userbounds[0];
+					maxLengthChoice.setValue(userbounds[1] + "");
+				}
+				if (sbOnly) {
+					minHeightChoice.setValue(userbounds[0] + "");
+				}
+			}
+		});
+		maxLengthChoice.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
+			public void changed(ObservableValue observed, Number oldnum, Number newnum) {
+				userbounds[1] = (int)(newnum) + 4;
+				if (userbounds[0] > userbounds[1]) {
+					userbounds[0] = userbounds[1];
+					minLengthChoice.setValue(userbounds[0] + "");
+				}
+				if (sbOnly) {
+					maxHeightChoice.setValue(userbounds[1] + "");
+				}
+			}
+		});
+		minHeightChoice.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
+			public void changed(ObservableValue observed, Number oldnum, Number newnum) {
+				userbounds[2] = (int)(newnum) + 4;
+				if (userbounds[2] > userbounds[3]) {
+					userbounds[3] = userbounds[2];
+					maxHeightChoice.setValue(userbounds[3] + "");
+				}
+				if (sbOnly) {
+					minLengthChoice.setValue(userbounds[2] + "");
+				}
+			}
+		});
+		maxHeightChoice.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
+			public void changed(ObservableValue observed, Number oldnum, Number newnum) {
+				userbounds[3] = (int)(newnum) + 4;
+				if (userbounds[2] > userbounds[3]) {
+					userbounds[2] = userbounds[3];
+					minHeightChoice.setValue(userbounds[2] + "");
+				}
+				if (sbOnly) {
+					maxLengthChoice.setValue(userbounds[3] + "");
+				}
+			}
+		});
+
+
 		chooseDims.getStyleClass().add("settingstext");
 		lengthText.getStyleClass().add("settingstext");
 		heightText.getStyleClass().add("settingstext");
@@ -360,9 +456,24 @@ public class Main extends Application {
 		spCustom.getChildren().add(blockedText);
 		spCustom.getChildren().add(blockedSlider);
 
+		mpCustom1.getChildren().add(squareCb);
+		mpCustom1.getChildren().add(blockedCb);
+		mpCustom2.getChildren().add(minLengthLabel);
+		mpCustom2.getChildren().add(minLengthChoice);
+		mpCustom2.getChildren().add(maxLengthLabel);
+		mpCustom2.getChildren().add(maxLengthChoice);
+		mpCustom3.getChildren().add(minHeightLabel);
+		mpCustom3.getChildren().add(minHeightChoice);
+		mpCustom3.getChildren().add(maxHeightLabel);
+		mpCustom3.getChildren().add(maxHeightChoice);
+
 		settingsRegion.getChildren().add(backButton);
 		settingsRegion.getChildren().add(chooseDims);
 		settingsRegion.getChildren().add(spCustom);
+		settingsRegion.getChildren().add(mpsettings);
+		settingsRegion.getChildren().add(mpCustom1);
+		settingsRegion.getChildren().add(mpCustom2);
+		settingsRegion.getChildren().add(mpCustom3);
 
 	}
 
@@ -397,8 +508,16 @@ public class Main extends Application {
 		try {
 			Random rand = new Random();
 			length = rand.nextInt(bounds[1] - bounds[0] + 1) + bounds[0];
-			height = rand.nextInt(bounds[3] - bounds[2] + 1) + bounds[2];
-			numBlocked = rand.nextInt((int)Math.sqrt((length+2)*(height+2)));
+			if (sbOnly)
+				height = length;
+			else
+				height = rand.nextInt(bounds[3] - bounds[2] + 1) + bounds[2];
+
+			if (noBlocked)
+				numBlocked = 0;
+			else
+				numBlocked = rand.nextInt((int)Math.sqrt((length+2)*(height+2)));
+
 			rboard = new ReversiBoard(length, height, numBlocked);
 			int[][] blocked = rboard.getBlockedSpaces();
 			String bmsg = ""; //blocked message
@@ -434,14 +553,17 @@ public class Main extends Application {
 			length = Integer.parseInt(dimensioninfo[1]);
 			height = Integer.parseInt(dimensioninfo[2]);
 			ArrayList<Integer[]> allBlocked = new ArrayList<Integer[]>();
-			int index = 3;
-			while (index < dimensioninfo.length) {
-				Integer[] coord = new Integer[2];
-				coord[0] = Integer.parseInt(dimensioninfo[index]);
-				index++;
-				coord[1] = Integer.parseInt(dimensioninfo[index]);
-				index++;
-				allBlocked.add(coord);
+
+			if (!noBlocked) {
+				int index = 3;
+				while (index < dimensioninfo.length) {
+					Integer[] coord = new Integer[2];
+					coord[0] = Integer.parseInt(dimensioninfo[index]);
+					index++;
+					coord[1] = Integer.parseInt(dimensioninfo[index]);
+					index++;
+					allBlocked.add(coord);
+				}
 			}
 			rboard = new ReversiBoard(length, height, allBlocked);
 
@@ -511,11 +633,12 @@ public class Main extends Application {
 								tColor = oColor;
 							}
 
-							Platform.runLater(new Runnable() {
+							//this is for testing purposes only
+							/*Platform.runLater(new Runnable() {
 								public void run() {
 									endGameMP();
 								}
-							});
+							});*/
 
 						}
 						else if (keyword.equals("PASS")) { //opponent decided to pass
@@ -723,7 +846,16 @@ public class Main extends Application {
 			public void handle(ActionEvent e) {
 				try {
 					connectText.setText("Looking for opponent...");
-					out.writeUTF("FINDOPPONENT#" + userbounds[0] + "#" + userbounds[1] + "#" + userbounds[2] + "#" + userbounds[3]);
+					String t1, t2;
+					if (sbOnly)
+						t1 = "T";
+					else
+						t1 = "F";
+					if (noBlocked)
+						t2 = "T";
+					else
+						t2 = "F";
+					out.writeUTF("FINDOPPONENT#" + userbounds[0] + "#" + userbounds[1] + "#" + userbounds[2] + "#" + userbounds[3] + "#" + t1 + "#" + t2);
 					sideVBox.getChildren().add(cancelButton);
 				} catch (IOException e1) {
 					e1.printStackTrace();
@@ -982,7 +1114,7 @@ public class Main extends Application {
 
 		boolean canPlay = !rboard.updateLegal(tColor);
 		int[][] newboard = rboard.getBoard();
-		int[][][] legalboard = rboard.getLegal();
+		String[][] legalboard = rboard.getLegal();
 
 		for (int x = 0; x < length; x++) {
 			for (int y = 0; y < height; y++) {
@@ -1017,7 +1149,7 @@ public class Main extends Application {
 						button.getStyleClass().add("emptysquare");
 					}
 
-					if (legalboard[x][y][0] == 0)
+					if (legalboard[x][y].split(" ")[0].equals("0"))
 						button.setDisable(true);
 					else
 						button.setDisable(false);

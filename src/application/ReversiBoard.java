@@ -38,9 +38,14 @@ public class ReversiBoard {
 	 * For the first layer, 0 = illegal placement, 1 = legal placement
 	 * For the other 8 layers, the number will be the number of pieces that will be flipped, and 0 means illegal move.
 	 */
-	private int[][][] legalboard; //the board that keeps track of which moves are legal
+	private String[][] legalboard; //the board that keeps track of which moves are legal
 	private int numLegal; //number of legal spaces
-		
+	private ArrayList<Integer[]> allLegal = new ArrayList<Integer[]>();
+
+	public ReversiBoard() {
+
+	}
+
 	public ReversiBoard(int len, int hei, ArrayList<Integer[]> blockedSpaces) {
 		board = new int[len][hei];
 		length = len;
@@ -53,15 +58,15 @@ public class ReversiBoard {
 		board[len/2][hei/2] = -1;
 
 		//sets up legalboard
-		legalboard = new int[len][hei][9];
+		legalboard = new String[len][hei];
 		numLegal = len * hei - blockedSpaces.size();
-		
+
 		for (int i = 0; i < blockedSpaces.size(); i++) {
 			int tX = blockedSpaces.get(i)[0];
 			int tY = blockedSpaces.get(i)[1];
 			board[tX][tY] = 2;
 		}
-		
+
 		allBlocked = blockedSpaces;
 	}
 
@@ -78,7 +83,7 @@ public class ReversiBoard {
 		board[len/2][hei/2] = -1;
 
 		//sets up legalboard
-		legalboard = new int[len][hei][9];
+		legalboard = new String[len][hei];
 		numLegal = len * hei - numBlocked;
 
 		ArrayList<Integer> bCoords = new ArrayList<Integer>();
@@ -93,7 +98,7 @@ public class ReversiBoard {
 				tX = tNum%len;
 				tY = tNum/len;
 			} while(bCoords.contains(tNum) || 
-				   (tX >= len/2 - 2 && tX <= len/2 + 1 && tY >= hei/2 - 2 && tY <= hei/2 + 1));
+					(tX >= len/2 - 2 && tX <= len/2 + 1 && tY >= hei/2 - 2 && tY <= hei/2 + 1));
 			bCoords.add(tNum);
 			board[tX][tY] = 2;
 			Integer[] thisspace = {tX, tY};
@@ -124,12 +129,33 @@ public class ReversiBoard {
 	public void printlegal() {
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < length; x++) {
-				System.out.print(legalboard[x][y][0] + " ");
+				String toPrint = legalboard[x][y].split(" ")[0];
+				System.out.print(toPrint + " ");
 			}
 			System.out.println();
 		}
 	}
-	
+
+	//returns new reversiboard with same pieces but empty legalboard
+	@Override
+	public ReversiBoard clone() {
+		ReversiBoard newBoard = new ReversiBoard();
+		newBoard.board = new int[length][height];
+		newBoard.legalboard = new String[length][height];
+		for (int i = 0; i < length; i++) {
+			for (int j = 0; j < height; j++) {
+				newBoard.board[i][j] = this.board[i][j];
+				for (int k = 0; k < 9; k++)
+					newBoard.legalboard[i][j] = this.legalboard[i][j];
+			}
+		}
+
+		newBoard.length = this.length;
+		newBoard.height = this.height;
+
+		return newBoard;
+	}
+
 	public int[][] getBlockedSpaces() {
 		int[][] blocked = new int[allBlocked.size()][2];
 		for (int i = 0; i < allBlocked.size(); i++)
@@ -153,13 +179,13 @@ public class ReversiBoard {
 	}
 
 	//returns the 3-d matrix that determines legality of moves
-	public int[][][] getLegal() {
+	public String[][] getLegal() {
 
-		int[][][] newlegal = new int[length][height][9];
+		String[][] newlegal = new String[length][height];
 		for (int i = 0; i < length; i++)
-			for (int j = 0; j < height; j++)
-				for (int k = 0; k < 9; k++)
-					newlegal[i][j][k] = legalboard[i][j][k];
+			for (int j = 0; j < height; j++) {
+				newlegal[i][j] = legalboard[i][j];
+			}
 		return newlegal;
 
 	}
@@ -176,21 +202,28 @@ public class ReversiBoard {
 
 	//sets a piece in accordance with move, assuming board legality is already updated and is consistent with move's color,
 	//and assumes that move is legal (will end in a same color piece)
-	public void setPiece(int color, int x, int y) {
+	//returns the net change for Engine
+	public int setPiece(int color, int x, int y) {
 
 		//follows legalboard coordinate system
 		int[] xDirList = {0, 1, 1, 1, 0, -1, -1, -1};
 		int[] yDirList = {1, 1, 0, -1, -1, -1, 0, 1};
 
+		int change = 0;
+		board[x][y] = color;
+		change += color;
 		for (int dir = 0; dir < xDirList.length; dir++) {
-			int step = 0;
-			if (legalboard[x][y][dir + 1] > 0) {
-				for (int i = 0; i <= legalboard[x][y][dir + 1]; i++) {
+			int step = 1;
+			if (Integer.parseInt(legalboard[x][y].split(" ")[dir+1]) > 0) {
+				for (int i = 1; i <= Integer.parseInt(legalboard[x][y].split(" ")[dir+1]); i++) {
 					board[x + step * xDirList[dir]][y + step * yDirList[dir]] = color;
+					change += color * 2;
 					step++;
 				}
 			}
 		}
+
+		return change;
 
 	}
 
@@ -198,6 +231,7 @@ public class ReversiBoard {
 	public boolean updateLegal(int color) {
 
 		numLegal = 0; //resets number of legal moves
+		allLegal.clear();
 
 		//follows legalboard coordinate system
 		int[] xDirList = {0, 1, 1, 1, 0, -1, -1, -1};
@@ -208,7 +242,7 @@ public class ReversiBoard {
 			for (int y = 0; y < height; y++) {
 
 				//first assume it's illegal until proven otherwise
-				legalboard[x][y][0] = 0;
+				legalboard[x][y] = "0";
 				//make sure the coordinate is an empty space
 				if (board[x][y] != 0)
 					continue;
@@ -216,15 +250,19 @@ public class ReversiBoard {
 				int totalTaken = 0;
 
 				//now checks all the possible directions
+				String takendata = "";
 				for (int i = 0; i < 8; i++) {
 					int numTaken = isLegal(color, x, y, xDirList[i], yDirList[i]);
-					legalboard[x][y][i+1] = numTaken; //becomes the number of pieces that will be flipped
+					takendata += " " + numTaken; //becomes the number of pieces that will be flipped
 					totalTaken += numTaken;
 				}
 
-				legalboard[x][y][0] = totalTaken;
-				if (legalboard[x][y][0] > 0)
+				legalboard[x][y] = totalTaken + takendata;
+				if (totalTaken > 0) {
 					numLegal++;
+					Integer[] curcoords = {x, y};
+					allLegal.add(curcoords);
+				}
 
 			}
 		}
@@ -266,10 +304,14 @@ public class ReversiBoard {
 		return coords[0] < 0 || coords[0] > length-1 || coords[1] < 0 || coords[1] > height-1;
 
 	}
-	
+
 	public int[] getDimensions() {
 		int[] dims = {length, height};
 		return dims;
+	}
+
+	public int numLegal() {
+		return numLegal;
 	}
 
 	//returns color of piece who won
@@ -288,6 +330,22 @@ public class ReversiBoard {
 			return -1;
 		return 0;
 
+	}
+
+	//only used by boardstate for finding previously computed states
+	//therefore can assume that dimensions and blocked spaces are the same
+	public boolean equals(ReversiBoard other) {
+
+		for (int i = 0; i < length; i++)
+			for (int j = 0; j < height; j++)
+				if (board[i][j] != other.board[i][j])
+					return false;
+		return true;
+
+	}
+
+	public ArrayList<Integer[]> getAllLegal() {
+		return allLegal;
 	}
 
 }

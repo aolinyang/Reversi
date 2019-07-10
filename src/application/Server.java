@@ -59,6 +59,8 @@ class ClientHandler implements Runnable {
 
 	private int[] bounds = new int[4];
 	//min length, max length, min height, max height
+	private boolean sbOnly; //whether square boards only
+	private boolean noBlocked; //no blocked squares
 
 	// constructor 
 	public ClientHandler(Socket s, String name, 
@@ -82,10 +84,13 @@ class ClientHandler implements Runnable {
 				if (ch.isSearching && ch != self) {
 					opponent = ch;
 					oppobounds = opponent.getBounds();
+					boolean[] oppoparams = opponent.getParams();
 					if (bounds[1] < oppobounds[0] ||
 							bounds[0] > oppobounds[1] ||
 							bounds[3] < oppobounds[2] ||
-							bounds[2] > oppobounds[3]) {
+							bounds[2] > oppobounds[3] ||
+							sbOnly != oppoparams[0] ||
+							noBlocked != oppoparams[1]) {
 						opponent = null;
 					}
 					else 
@@ -130,6 +135,16 @@ class ClientHandler implements Runnable {
 				else if (keyword.equals("FINDOPPONENT")) {
 					for (int i = 0; i < 4; i++)
 						bounds[i] = Integer.parseInt(received[i+1]);
+					if (received[5].equals("T"))
+						sbOnly = true;
+					else
+						sbOnly = false;
+					
+					if (received[6].equals("T"))
+						noBlocked = true;
+					else
+						noBlocked = false;
+					
 					finder = new OpponentFinder();
 					finder.start();
 				}
@@ -205,5 +220,10 @@ class ClientHandler implements Runnable {
 
 	public int[] getBounds() {
 		return bounds;
+	}
+	
+	public boolean[] getParams() {
+		boolean[] params = {sbOnly, noBlocked};
+		return params;
 	}
 }
