@@ -1,7 +1,5 @@
 package application;
 
-import java.util.Random;
-
 public class Player {
 	
 	/*
@@ -15,7 +13,6 @@ public class Player {
 	
 	public Player(String name, ReversiBoard playBoard, int c) {
 		
-		Random rand = new Random();
 		this.name = name;
 		color = c;
 		rboard = playBoard;

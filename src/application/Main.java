@@ -76,6 +76,7 @@ public class Main extends Application {
 
 	@Override
 	public void start(Stage primaryStage) {
+
 		try {
 			//creates region in the main page
 			VBox mainroot = setMainScreen(primaryStage);
