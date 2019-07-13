@@ -83,7 +83,7 @@ public class Main extends Application {
 
 			//create scene with root
 			mainscene = new Scene(mainroot,windowWidth,windowHeight);
-			mainscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+			mainscene.getStylesheets().add(getClass().getResource("mainscene.css").toExternalForm());
 
 			//puts scene on stage
 			primaryStage.setScene(mainscene);
@@ -189,7 +189,7 @@ public class Main extends Application {
 
 				BorderPane gameRegion = createGameRegion();
 				Scene gameScene = new Scene(gameRegion, windowWidth, windowHeight);
-				gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+				gameScene.getStylesheets().add(getClass().getResource("gamescene.css").toExternalForm());
 				pStage.setScene(gameScene);
 			} 
 		}; 
@@ -241,7 +241,7 @@ public class Main extends Application {
 						if (connected) {
 							BorderPane gameRegion = createMultiplayerGameRegion(false);
 							Scene gameScene = new Scene(gameRegion, windowWidth, windowHeight);
-							gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+							gameScene.getStylesheets().add(getClass().getResource("gamescene.css").toExternalForm());
 							pStage.setScene(gameScene);
 						}
 					}
@@ -756,7 +756,7 @@ public class Main extends Application {
 											sendBoardInfo();
 											gameRegion = newregion;
 											Scene newscene = new Scene(gameRegion, windowWidth, windowHeight);
-											newscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+											newscene.getStylesheets().add(getClass().getResource("gamescene.css").toExternalForm());
 											pStage.setScene(newscene);
 											user = new Player(pName, rboard, pColor);
 											opponent = new Player(oName, rboard, oColor);
@@ -788,7 +788,7 @@ public class Main extends Application {
 								public void run() {
 									gameRegion = newregion;
 									Scene newscene = new Scene(gameRegion, windowWidth, windowHeight);
-									newscene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+									newscene.getStylesheets().add(getClass().getResource("gamescene.css").toExternalForm());
 									pStage.setScene(newscene);
 									if (pColor == 1)
 										disableAllButtons();
@@ -1058,11 +1058,7 @@ public class Main extends Application {
 		tColor = -1;
 
 		BorderPane gameRegion = new BorderPane();
-		gameRegion.setId("playregion");
-
-		//create top text
-		Text heading = new Text("REVERSI");
-		heading.setId("playregionhead");
+		gameRegion.setId("gameregion");
 
 		sideVBox = new VBox();
 
@@ -1083,6 +1079,7 @@ public class Main extends Application {
 			}
 		};
 		backButton.setOnAction(exitClicked);
+		backButton.setId("backbutton");
 
 		//create the board region
 		playboard = new GridPane();
@@ -1101,8 +1098,8 @@ public class Main extends Application {
 		//create top hbox
 		HBox topHBox = new HBox();
 		topHBox.getChildren().add(backButton);
-		topHBox.getChildren().add(heading);
 		topHBox.getChildren().add(winAnnounce);
+		HBox.setMargin(backButton, new Insets(10, 10, 10, 10));
 
 		gameRegion.setTop(topHBox);
 		gameRegion.setCenter(playboard);
@@ -1191,7 +1188,7 @@ public class Main extends Application {
 
 				BorderPane gameRegion = createGameRegion();
 				Scene gameScene = new Scene(gameRegion, windowWidth, windowHeight);
-				gameScene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+				gameScene.getStylesheets().add(getClass().getResource("gamescene.css").toExternalForm());
 				pStage.setScene(gameScene);
 
 			}

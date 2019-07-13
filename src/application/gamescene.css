@@ -1,0 +1,58 @@
+@font-face {
+	src: url("OpenSans-Regular.ttf");
+}
+
+#backbutton {
+	-fx-font-family: "Open Sans";
+	-fx-font-size: 30;
+	-fx-padding: 10 40;
+}
+
+.smallborder {
+	-fx-border-color: black;
+}
+
+.gridsquare {
+	-fx-background-repeat: no-repeat;
+  	-fx-background-position: center;
+  	-fx-border-color: black;
+	-fx-focus-color: transparent;
+	-fx-faint-focus-color: transparent;
+	-fx-background-size: cover;
+}
+
+.emptysquare {
+	-fx-background-image: url('emptysquare.png');
+}
+
+.blacksquare {
+	-fx-background-image: url('blackpiece.png');
+}
+
+.bsrecentself {
+	-fx-background-image: url('bprecentself.png');
+}
+
+.bsrecentoppo {
+	-fx-background-image: url('bprecentoppo.png');
+}
+
+.whitesquare {
+	-fx-background-image: url('whitepiece.png');
+}
+
+.wsrecentself {
+	-fx-background-image: url('wprecentself.png');
+}
+
+.wsrecentoppo {
+	-fx-background-image: url('wprecentoppo.png');
+}
+
+.blockedsquare {
+	-fx-background-image: url('stone.png');
+}
+
+#playboard {
+	-fx-alignment: center;	
+}
